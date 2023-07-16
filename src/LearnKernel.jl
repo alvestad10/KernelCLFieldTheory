@@ -17,7 +17,6 @@ function learnKernel(KP::KernelProblem, RS::RunSetup; RS_val::RunSetup=RS, cb=(K
     runs_pr_epoch = 50
 
     bestLD = LD
-    lastImprovement = 0
 
 
     opt = ADAM(0.001)
@@ -40,13 +39,6 @@ function learnKernel(KP::KernelProblem, RS::RunSetup; RS_val::RunSetup=RS, cb=(K
             if LD < bestLD
                 bestLD = LD
                 bestKernel = deepcopy(KP.kernel)
-                lastImprovement = 0
-            end
-
-            if lastImprovement > 10
-                break
-            else
-                lastImprovement += 1
             end
 
 

@@ -188,7 +188,7 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{1}}; H = KP.kernel.H)
         uIm = reshape(_uIm,t_steps,n_steps)
 
         _x = uRe + im * uIm
-        for i in 1:5
+        for i in 1:1
 
             _A_tmp =    @. ((_x - _x[gtm1,:]) / (a_m1 .- κ) + (_x - _x[gtp1,:]) / (a .- κ)  - 
                             (a + a_m1)/2 * ( (2*_x - _x[:,gsm1] - _x[:,gsp1]) * as_prefac 

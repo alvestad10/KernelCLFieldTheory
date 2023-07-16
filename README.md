@@ -35,7 +35,7 @@ plotSKContour(KP,sol)
 
 ## Example 2
 
-Second a simple example to learn a kernel for the 1+1D Field Theory on the split Schwinger-Keldysh contour (Alexandru2016) up to 1.6 in real-time
+Second a simple example to learn a kernel for the 1+1D Field Theory on the split Schwinger-Keldysh contour (Alexandru2016) up to 1.0 in real-time
 
 ```julia
 using KernelCLFieldTheory
@@ -46,14 +46,18 @@ using Statistics
 using JLD2
 
 
-M = ScalarField_from_at(D=1,m=1.0,λ=1.0,RT=1.6,β=0.4,at=0.2,n_steps=8,as=0.2,
+M = ScalarField_from_at(D=1,m=1.0,λ=1.0,RT=1.0,β=0.4,at=0.2,n_steps=8,as=0.2,
                         Δβ = 0.5                
+                        #ΔE = 0.0              
 )
 
 KP = KernelCLFieldTheory.KernelProblem(M)
-RS_train = RunSetup(NTr=1, tspan=100, saveat=0.01, dt=1e-4, dtmax=1e-3, adaptive=true)
+RS_train = RunSetup(NTr=1, tspan=10, saveat=0.01, dt=1e-4, dtmax=1e-3, adaptive=true)
 RS_val = deepcopy(RS_train)
-RS_val.tspan = 500
+RS_val.tspan = 100
+
+@time sol = run_simulation(KP,RS_val);
+plotSKContour(KP,sol)
 
 lhistory = Dict(:L => [], :LSym => [], :evalsK => [], :detK => [], :symK => [])
 
@@ -79,17 +83,17 @@ cb(KP::KernelProblem;sol=sol,addtohistory=false) = begin
     return LSym
 end
 
-bestKernel = learnKernel(KP,RS_train; cb=cb)
+bestKernel = learnKernel(KP,RS_train; RS_val=RS_val, cb=cb)
 
 bestKP = KernelCLFieldTheory.KernelProblem(M, kernel=bestKernel)
-@time sol = run_simulation(KP,RS_val);
+@time sol = run_simulation(bestKP,RS_val);
 
 plotSKContour(KP,sol)
 ```
 
 Now we can use the optimal kernel and run once more with a higher statistics
 ```julia
-RS_train = RunSetup(NTr=1, tspan=2000, saveat=0.01, dt=1e-4, dtmax=1e-3, adaptive=true)
+RS_train = RunSetup(NTr=1, tspan=5000, saveat=0.01, dt=1e-4, dtmax=1e-3, adaptive=true)
 @time sol = run_simulation(bestKP,RS_val);
 plotSKContour(bestKP,sol)
 ```
