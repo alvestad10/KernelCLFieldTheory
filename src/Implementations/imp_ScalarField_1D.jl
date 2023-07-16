@@ -34,6 +34,7 @@ function get_ab(model::ScalarField{1},kernel::MatrixKernel{T}) where {T <: Real}
     pre_fac = (1. / abs(a[1]))
     #im_pre_fac = im*pre_fac
 
+    isIdentity = all(diag(H) .- 1. .== 0.0)
 
     function a_func!(du,u,p,t)
 
@@ -50,10 +51,12 @@ function get_ab(model::ScalarField{1},kernel::MatrixKernel{T}) where {T <: Real}
         VRe = @view tmp[2t_steps .+ (1:t_steps),:]
         VIm = @view tmp[3t_steps .+ (1:t_steps),:]
         
-        KReARe = vec(@view tmp[4t_steps .+ (1:t_steps),:])
-        KImAIm = vec(@view tmp[5t_steps .+ (1:t_steps),:])
-        KReAIm = vec(@view tmp[6t_steps .+ (1:t_steps),:])
-        KImARe = vec(@view tmp[7t_steps .+ (1:t_steps),:])
+        if !isIdentity
+            KReARe = vec(@view tmp[4t_steps .+ (1:t_steps),:])
+            KImAIm = vec(@view tmp[5t_steps .+ (1:t_steps),:])
+            KReAIm = vec(@view tmp[6t_steps .+ (1:t_steps),:])
+            KImARe = vec(@view tmp[7t_steps .+ (1:t_steps),:])
+        end
 
         #uRe = @view _u[1:t_steps,:]
         uRetm1 = @view uRe[gm1,:]
@@ -98,25 +101,32 @@ function get_ab(model::ScalarField{1},kernel::MatrixKernel{T}) where {T <: Real}
                 )
         end
 
-        _ARe = vec(ARe)
-        _AIm = vec(AIm)
-        KReARe .= KRe*_ARe
-        KImAIm .= KIm*_AIm
-        KReAIm .= KRe*_AIm
-        KImARe .= KIm*_ARe
-        @. du[1:t_steps*n_steps,:] = KReARe - KImAIm
-        @. du[t_steps*n_steps + 1:end,:] = KImARe + KReAIm
-    
+        if isIdentity
+            du[1:t_steps*n_steps,:] .= vec(ARe)
+            du[t_steps*n_steps + 1:end,:] .= vec(AIm)
+        else
+            _ARe = vec(ARe)
+            _AIm = vec(AIm)
+            KReARe .= KRe*_ARe
+            KImAIm .= KIm*_AIm
+            KReAIm .= KRe*_AIm
+            KImARe .= KIm*_ARe
+            @. du[1:t_steps*n_steps,:] = KReARe - KImAIm
+            @. du[t_steps*n_steps + 1:end,:] = KImARe + KReAIm
+        end
         nothing
     end
     
-    #@warn "Using Diagonal noise, without a kernel"
-    #sqrt2pre_fac = sqrt(2 * pre_fac)
+    
+    sqrt2pre_fac = sqrt(2 * pre_fac)
     sqrt2pre_fac_sqrtK = sqrt(2 * pre_fac) * H
     
     function b_func!(du,u,p,t)
-        
-        @. du = sqrt2pre_fac_sqrtK
+        if isIdentity
+            @. du[1:div(end,2)] = sqrt2pre_fac
+        else
+            @. du = sqrt2pre_fac_sqrtK
+        end
         nothing
     end 
 
@@ -188,7 +198,7 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{1}}; H = KP.kernel.H)
         uIm = reshape(_uIm,t_steps,n_steps)
 
         _x = uRe + im * uIm
-        for i in 1:1
+        for i in 1:3
 
             _A_tmp =    @. ((_x - _x[gtm1,:]) / (a_m1 .- κ) + (_x - _x[gtp1,:]) / (a .- κ)  - 
                             (a + a_m1)/2 * ( (2*_x - _x[:,gsm1] - _x[:,gsp1]) * as_prefac 

@@ -23,7 +23,7 @@ end
 
 
 
-function run_simulation(KP::KernelProblem, runSetup::RunSetup; seed=nothing, u0 = nothing)
+function run_simulation(KP::KernelProblem, runSetup::RunSetup; seed=nothing, u0 = nothing, T=Float64)
     @unpack tspan, NTr, saveat,scheme, dt, abstol, reltol, dtmax, adaptive, tspan_thermalization = runSetup
     
     @unpack kernel, a, b, model = KP
@@ -31,13 +31,13 @@ function run_simulation(KP::KernelProblem, runSetup::RunSetup; seed=nothing, u0 
     
 
     if isnothing(u0)
-        u0 = [get_initial_value(model,Float32) for i in 1:NTr]
+        u0 = [get_initial_value(model,T) for i in 1:NTr]
     else
-        tspan_thermalization = 0.01
+        #tspan_thermalization = 0.01
     end
 
-    noise_rate_prototype = get_noise_rate_prototype(model,Float32)
-    caches = [get_caches(model, Float32) for _ in 1:NTr]
+    noise_rate_prototype = get_noise_rate_prototype(model,T)
+    caches = [get_caches(model, T) for _ in 1:NTr]
 
     function prob_func(prob,i,repeat)
         if isnothing(seed)
@@ -47,10 +47,15 @@ function run_simulation(KP::KernelProblem, runSetup::RunSetup; seed=nothing, u0 
         end
     end
     
-    prob = SDEProblem(a,b,u0[1],(0.0,tspan+tspan_thermalization),caches[1],
-                                noise_rate_prototype=noise_rate_prototype
-            )
-    
+    isIdentity = all(diag(kernel.H) .- 1. .== 0.0)
+    if isIdentity
+        prob = SDEProblem(a,b,u0[1],(0.0,tspan+tspan_thermalization),caches[1])
+    else
+        prob = SDEProblem(a,b,u0[1],(0.0,tspan+tspan_thermalization),caches[1],
+                                    noise_rate_prototype=noise_rate_prototype
+                )
+    end
+
     ensemble_prob = EnsembleProblem(prob,prob_func=prob_func)
 
     # Getting progressbar
