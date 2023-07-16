@@ -103,6 +103,11 @@ This is suppost to be the main loop of the optimizaiton process, can be tuned fo
 
 
 The structure of the code is as follows:
-The model, including the contour, can be made by `ScalarField` or `ScalarField_from_at`. See the example of parameters. The contour is specified with, nothing extra: Canonical SK, Δβ = 0.5  
+The model, including the contour, can be made by `ScalarField` or `ScalarField_from_at`. See the example of parameters. The contour is specified with, nothing extra: Canonical SK, Δβ = 0.5: split SK contour (Alexandru2016) and ΔE = 0.0 for tilted SK contour (or larger if also forward tilt). 
+
+The specific implementation of the discretized action is in the Implementations folder, where also the loss funciton is located.
+In this function it is possible to change the number of steps forward for each configuration when calculating the loss function (and its gradient).
+
+
 
 

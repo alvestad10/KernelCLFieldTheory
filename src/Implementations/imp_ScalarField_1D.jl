@@ -176,7 +176,7 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{1}}; H = KP.kernel.H)
     
     im_pre_fac_KC = KC*im*pre_fac
 
-    dt = 1e-3
+    dt = 1e-5
     κ = im*1e-2
 
     g(u) = begin
@@ -188,7 +188,7 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{1}}; H = KP.kernel.H)
         uIm = reshape(_uIm,t_steps,n_steps)
 
         _x = uRe + im * uIm
-        for i in 1:1
+        for i in 1:5
 
             _A_tmp =    @. ((_x - _x[gtm1,:]) / (a_m1 .- κ) + (_x - _x[gtp1,:]) / (a .- κ)  - 
                             (a + a_m1)/2 * ( (2*_x - _x[:,gsm1] - _x[:,gsp1]) * as_prefac 
@@ -200,7 +200,7 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{1}}; H = KP.kernel.H)
         end
 
         
-        return sum(imag(_x).^2)
+        return sum(imag(_x).^2) + sum(real(_x).^2)
 
     end
 
@@ -211,65 +211,3 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{1}}; H = KP.kernel.H)
 end
 
 
-
-
-function calcIMXLoss2(sol_tr,KP::KernelProblem{ScalarField{1}}; H = KP.kernel.H)
-
-    @unpack m, λ, contour, n_steps, as = KP.model
-    @unpack a, t_steps = contour
-
-    
-
-    gtm1=vcat([t_steps],1:t_steps-1)
-    gtp1=vcat(2:t_steps,[1])
-
-    gsm1=vcat([n_steps],1:n_steps-1)
-    gsp1=vcat(2:n_steps,[1])
-
-    
-    a_m1 = a[gtm1]
-    as_prefac = 1 / (as^2) # (atm1_2a2_Re + a_2a2_Re)
-    #as_prefac_im = 1/ (as^2)
-
-    
-    pre_fac = (as / abs(a[1]))
-    
-    KRe,KIm = getK(H)
-    KC = KRe .+ im*KIm
-
-    
-    im_pre_fac_KC = KC*im*pre_fac
-
-    dt = 1e-5
-    κ = im*1e-2
-
-    g(u) = begin
-
-        _uRe = @view u[1:t_steps*n_steps]
-        _uIm = @view u[t_steps*n_steps + 1:end]
-
-        uRe = reshape(_uRe,t_steps,n_steps)
-        uIm = reshape(_uIm,t_steps,n_steps)
-
-        _x = uRe + im * uIm
-        for i in 1:5
-            _A_tmp =    @. ((_x - _x[gtm1,:]) / (a_m1 .- κ) + (_x - _x[gtp1,:]) / (a .- κ)  - 
-            (a + a_m1)/2 * ( (2*_x - _x[:,gsm1] - _x[:,gsp1]) * as_prefac 
-                                +  (m * _x + (λ/6) * _x^3)))
-
-            _A = im_pre_fac_KC * vec(_A_tmp)
-
-            _x += reshape(_A * dt,t_steps,n_steps)
-        end
-
-        
-        return sum(imag(_x).^2)
-
-    end
-
-
-    return sum(
-        mean(g(u) for u in eachrow(sol_tr'))
-        )
-
-end

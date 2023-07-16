@@ -14,7 +14,7 @@ function learnKernel(KP::KernelProblem, RS::RunSetup; RS_val::RunSetup=RS, cb=(K
     tdL = 0.
 
     epochs = 2
-    runs_pr_epoch = 30
+    runs_pr_epoch = 50
 
     bestLD = LD
     lastImprovement = 0
