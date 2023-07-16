@@ -175,14 +175,16 @@ end
 """
     Calculate the loss based on the symmetry prior knowledge
 """
-function calcSymLoss(sol,KP::KernelProblem{ScalarField{D}}; obs_calc = nothing) where {D}
+function calcSymLoss(sol,KP::KernelProblem{ScalarField{D}}; obs = nothing) where {D}
 
-
-    if isnothing(obs_calc)
+    if isnothing(obs)
         obs = calc_obs(KP,sol)
-        avgRe, err_avgRe, avgIm, err_avgIm, avg2Re, err_avg2Re, avg2Im, err_avg2Im, corr0tRe, err_corr0tRe, corr0tIm, err_corr0tIm = calc_meanObs(obs) 
-    else
-        avgRe, err_avgRe, avgIm, err_avgIm, avg2Re, err_avg2Re, avg2Im, err_avg2Im, corr0tRe, err_corr0tRe, corr0tIm, err_corr0tIm = obs_calc
+    end
+    
+    if sol isa SciMLBase.RODESolution || length(sol) == 1
+        avgRe, err_avgRe, avgIm, err_avgIm, avg2Re, err_avg2Re, avg2Im, err_avg2Im, corr0tRe, err_corr0tRe, corr0tIm, err_corr0tIm = obs
+    elseif sol isa SciMLBase.EnsembleSolution
+        avgRe, err_avgRe, avgIm, err_avgIm, avg2Re, err_avg2Re, avg2Im, err_avg2Im, corr0tRe, err_corr0tRe, corr0tIm, err_corr0tIm = calc_meanObs(obs)
     end
 
 
