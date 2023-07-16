@@ -14,15 +14,14 @@ end
 
 function getK(H::Matrix{T}) where {T <: Real}
     _H = H[1:div(end,2),:] .+ im*H[div(end,2)+1:end,:]
-    K = _H*transpose(_H)
-    return K
-end
-
-function getK(kernel::MatrixKernel)
-    _K = getK(kernel.H)
+    _K = _H*transpose(_H)
     KRe = real(_K)
     KIm = imag(_K)
     return KRe, KIm
+end
+
+function getK(kernel::MatrixKernel)
+    return getK(kernel.H)
 end
 
 function MatrixKernel(M::ScalarField{1})

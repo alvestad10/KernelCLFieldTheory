@@ -23,7 +23,7 @@ end
 
 
 
-function run_simulation(KP::KernelProblem, runSetup::RunSetup, seed=nothing, u0 = nothing)
+function run_simulation(KP::KernelProblem, runSetup::RunSetup; seed=nothing, u0 = nothing)
     @unpack tspan, NTr, saveat,scheme, dt, abstol, reltol, dtmax, adaptive, tspan_thermalization = runSetup
     
     @unpack kernel, a, b, model = KP
