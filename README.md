@@ -43,7 +43,7 @@ using Plots
 using Zygote
 using Measurements
 using Statistics
-using JLD2
+using LinearAlgebra
 
 
 M = ScalarField_from_at(D=1,m=1.0,λ=1.0,RT=1.0,β=0.4,at=0.2,n_steps=8,as=0.2,
