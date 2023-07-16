@@ -7,7 +7,8 @@ using JLD2
 
 
 M = ScalarField_from_at(D=1,m=1.0,λ=1.0,RT=1.6,β=0.4,at=0.2,n_steps=8,as=0.2,
-                        #Δβ = 0.5                
+                        Δβ = 0.5                
+                        #ΔE = 0.0              
 )
 
 KP = KernelCLFieldTheory.KernelProblem(M)
