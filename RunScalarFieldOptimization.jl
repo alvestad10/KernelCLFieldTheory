@@ -15,9 +15,8 @@ RS_train = RunSetup(NTr=1, tspan=10, saveat=0.01, dt=1e-4, dtmax=1e-3, adaptive=
 RS_val = deepcopy(RS_train)
 RS_val.tspan = 100
 
-#@time sol = run_simulation(KP,RS_val);
-#plotSKContour(KP,sol)
-
+@time sol = run_simulation(KP,RS_val);
+plotSKContour(KP,sol)
 
 lhistory = Dict(:L => [], :LSym => [], :evalsK => [], :detK => [], :symK => [])
 
