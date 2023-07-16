@@ -22,17 +22,19 @@ function learnKernel(KP::KernelProblem, RS::RunSetup; RS_val::RunSetup=RS, cb=(K
     opt = ADAM(0.001)
 
     for i in 1:epochs
+        
+
         for j in 1:runs_pr_epoch
             u0s = [tr[:,end] for tr in sol]
+            trun = @elapsed sol = run_simulation(KP, RS; u0=u0s)
 
             tdL = @elapsed dHs = getdH_imx(sol,KP)
             
             Flux.update!(opt, KP.kernel.H, dHs)
 
+            # Updating the drift and noise term with the new kernel
             KP = updateProblem(KP)
-
-            trun = @elapsed sol = run_simulation(KP, RS; u0=u0s)
-
+            
             LD = mean(calcIMXLoss(sol[tr],KP) for tr in eachindex(sol))
             println("EPOCH ", i, ", BATCH:", j," ------ LDrift=", round(LD,digits=5), "\t (time_grad: ", round(tdL,digits=2), ")")
 
