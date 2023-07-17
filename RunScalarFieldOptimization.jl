@@ -57,8 +57,9 @@ RS_val2.scheme = KernelCLFieldTheory.LambaEM()
 bestKP = KernelCLFieldTheory.KernelProblem(M, kernel=bestKernel)
 @time sol = run_simulation(bestKP,RS_val2);
 
-plotSKContour(KP,sol)
-plotFWContour(KP,sol)
+plotSKContour(bestKP,sol)
+plotFWContour(bestKP,sol)
+
 plot(lhistory_train[:L],label="L")
 plot(lhistory_train[:LSym],label="LSym")
 
