@@ -17,6 +17,10 @@ function getSolutions(model::ScalarTheory{1})
     if (model.m == 1.0 && model.λ == 1.0 && model.contour.β == 0.4 && model.as*model.n_steps == 1.6)
         solution["phi2Re"] = 0.958
         solution["phi2Re_err"] = 0.005
+
+        # TODO:
+        # Eucledian data from HMC
+
         
         thimble_tp = collect(0.0:0.2:1.6)
 

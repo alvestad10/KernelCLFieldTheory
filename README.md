@@ -5,7 +5,7 @@ To run the code you need a version of Julia installed, then you can make separat
 
 ## Instantiate
 
-To initialize the project run these comments inside the Julia REPL (From inside the project directory)
+To initialize the project run these lines inside the Julia REPL (From inside the project directory)
 ```julia
     import Pkg
     Pkg.activate(".")
