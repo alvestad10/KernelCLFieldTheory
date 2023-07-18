@@ -62,5 +62,28 @@ function MatrixKernel(M::ScalarField{2})
     return MatrixKernel(H)
 end
 
+function MatrixKernel(M::ScalarField{3})
+    @unpack n_steps = M 
+    @unpack t_steps = M.contour 
+
+    _HRe = zeros(t_steps,n_steps,n_steps,n_steps,t_steps,n_steps,n_steps,n_steps)
+    for i in 1:t_steps
+        for j in 1:n_steps
+            for k in 1:n_steps
+                for l in 1:n_steps
+                    _HRe[i,j,k,l,i,j,k,l] = 1.
+            
+                end    
+            end
+        end
+    end
+
+
+    H = vcat(reshape(_HRe,t_steps*n_steps^3,t_steps*n_steps^3),
+             zeros(t_steps*n_steps^3,t_steps*n_steps^3))
+    
+    return MatrixKernel(H)
+end
+
 
 

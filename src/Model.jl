@@ -190,6 +190,14 @@ function get_caches(model::ScalarField{2},T::Type = Float64)
     return dualcache(tmp)
 end
 
+function get_caches(model::ScalarField{3},T::Type = Float64)
+    t_steps = model.contour.t_steps
+    n_steps = model.n_steps
+
+    tmp = zeros(T,8t_steps,n_steps,n_steps,n_steps)
+    return dualcache(tmp)
+end
+
 
 
 

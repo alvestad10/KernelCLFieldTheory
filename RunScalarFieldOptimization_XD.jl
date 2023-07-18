@@ -7,17 +7,23 @@ using JLD2
 using LinearAlgebra
 
 
-M = ScalarField_from_at(D=2,m=1.0,λ=1.0,RT=1.0,β=0.4,at=0.2,n_steps=8,as=0.2,
+M = ScalarField_from_at(D=2,m=1.0,λ=1.0,RT=0.4,β=0.4,at=0.2,n_steps=8,as=0.2,
                         Δβ = 0.5                
                         #ΔE = 0.05              
 )
 
 KP = KernelCLFieldTheory.KernelProblem(M);
-RS_train = RunSetup(NTr=1, tspan=10, saveat=0.1, dt=1e-4, dtmax=1e-3, adaptive=true)
+RS_train = RunSetup(NTr=1, tspan=1000, saveat=0.1, dt=1e-4, dtmax=1e-3, adaptive=true)
 RS_train.scheme = KernelCLFieldTheory.LambaEM()
 RS_val = deepcopy(RS_train)
 RS_val.tspan = 400
 RS_val.scheme = KernelCLFieldTheory.LambaEM()
+
+
+@time sol = run_simulation(KP,RS_train);
+
+plotSKContour(KP,sol)
+plotFWContour(KP,sol)
 
 
 lhistory_val = Dict(:L => [], :LSym => [], :evalsK => [], :detK => [], :symK => [])
