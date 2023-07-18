@@ -34,6 +34,7 @@ include("LearnKernel.jl")
 
 include("Implementations/imp_ScalarField.jl")
 include("Implementations/imp_ScalarField_1D.jl")
+include("Implementations/imp_ScalarField_2D.jl")
 
 include("PlotScripts.jl")
 

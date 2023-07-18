@@ -55,8 +55,13 @@ function plotSKContour(KP::KernelProblem,sol;obs=nothing)
                     ;plot_setup(:bottomright)...)
     end
 
+    if "phi2Re" in keys(KP.y)
     plot!(fig,tp,ones(length(tp))*KP.y["phi2Re"],label=L"$\textrm{HMC}$";solution_line_dict()...)
-    plot!(fig,tp,ones(length(tp))*KP.y["phi2Im"],label=false;solution_line_dict()...)
+    end
+
+    if "phi2Im" in keys(KP.y)
+        plot!(fig,tp,ones(length(tp))*KP.y["phi2Im"],label=false;solution_line_dict()...)
+    end
     
     scatter!(fig,tp,avgRe .± err_avgRe,label=L"$\textrm{Re}\langle \phi \rangle$";markers_dict(1)...)
     scatter!(fig,tp,avgIm .± err_avgIm,label=L"$\textrm{Im}\langle \phi \rangle$";markers_dict(2)...)
@@ -106,9 +111,14 @@ function plotFWContour(KP::KernelProblem,sol;obs=nothing)
                     ;plot_setup(:bottomright)...)
     end
 
-    plot!(fig,tp,ones(length(tp))*KP.y["phi2Re"],label=L"$\textrm{HMC}$";solution_line_dict()...)
-    plot!(fig,tp,ones(length(tp))*KP.y["phi2Im"],label=false;solution_line_dict()...)
-    
+    if "phi2Re" in keys(KP.y)
+        plot!(fig,tp,ones(length(tp))*KP.y["phi2Re"],label=L"$\textrm{HMC}$";solution_line_dict()...)
+    end
+
+    if "phi2Im" in keys(KP.y)
+        plot!(fig,tp,ones(length(tp))*KP.y["phi2Im"],label=false;solution_line_dict()...)
+    end
+
     if "corr0tRe" in keys(KP.y)
         plot!(fig,tp,KP.y["corr0tRe"],label=false;solution_line_dict()...)
         plot!(fig,tp,KP.y["corr0tIm"],label=false;solution_line_dict()...)

@@ -1,7 +1,7 @@
 export getSolutions
 
 
-function getSolutions(model::ScalarTheory{1})
+function getSolutions(model::ScalarTheory{D}) where {D}
     @unpack n_steps = model
     @unpack t_steps = model.contour
 
@@ -14,7 +14,7 @@ function getSolutions(model::ScalarTheory{1})
         "phi2Im_err" => 0.0
     )
 
-    if (model.m == 1.0 && model.λ == 1.0 && model.contour.β == 0.4 && model.as*model.n_steps == 1.6)
+    if (D == 1 && model.m == 1.0 && model.λ == 1.0 && model.contour.β == 0.4 && model.as*model.n_steps == 1.6)
         solution["phi2Re"] = 0.958
         solution["phi2Re_err"] = 0.005
 
