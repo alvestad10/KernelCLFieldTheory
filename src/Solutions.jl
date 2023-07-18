@@ -52,5 +52,10 @@ function getSolutions(model::ScalarTheory{D}) where {D}
             )
     end
 
+    if (D == 2 && model.m == 1.0 && model.λ == 1.0 && model.contour.β == 0.4 && model.as*model.n_steps == 1.6)
+        solution["phi2Re"] = 0.4786
+        solution["phi2Re_err"] = 0.005
+    end
+
     return solution
 end
