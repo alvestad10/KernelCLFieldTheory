@@ -162,14 +162,14 @@ end
 """
     Calculate the drift loss used to update approximate the gradient
 """
-function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{2}}; H = KP.kernel.H)
+function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{3}}; H = KP.kernel.H)
 
     @unpack m, λ, contour, n_steps, as = KP.model
     @unpack a, t_steps = contour
 
 
     dt = 1e-5
-    κ = 1e-2
+    κ = 1e-2*im
     
 
     gm1=vcat([t_steps],1:t_steps-1)
@@ -182,12 +182,12 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{2}}; H = KP.kernel.H)
     as_prefac_re = 1 / (as^2)
     as_prefac_im = 1/ (as^2) 
 
-    one_over_a = a.^(-1)
+    one_over_a = (a.- κ).^(-1)
     one_over_a_Re = real(one_over_a) #hcat([real(one_over_a) for i in 1:n_steps]...)
-    one_over_a_Im = (imag(one_over_a) .- κ) #hcat([imag(one_over_a) for i in 1:n_steps]...)
-    one_over_a_m1 = a_m1.^(-1)
+    one_over_a_Im = (imag(one_over_a)) #hcat([imag(one_over_a) for i in 1:n_steps]...)
+    one_over_a_m1 = (a_m1 .- κ).^(-1)
     one_over_a_m1_Re = real(one_over_a_m1) #hcat([real(one_over_a_m1) for i in 1:n_steps]...)
-    one_over_a_m1_Im = (imag(one_over_a_m1) .- κ) #hcat([imag(one_over_a_m1) for i in 1:n_steps]...)
+    one_over_a_m1_Im = (imag(one_over_a_m1)) #hcat([imag(one_over_a_m1) for i in 1:n_steps]...)
     
     V_pre_fac = (a + a_m1)/2
     V_pre_fac_Re = real(V_pre_fac) #hcat([real(V_pre_fac) for i in 1:n_steps]...)
@@ -202,19 +202,19 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{2}}; H = KP.kernel.H)
 
     
 
-    ARe = zeros(t_steps,n_steps,n_steps)
-    AIm = zeros(t_steps,n_steps,n_steps)
+    ARe = zeros(t_steps,n_steps,n_steps,n_steps)
+    AIm = zeros(t_steps,n_steps,n_steps,n_steps)
 
     g(u) = begin
 
-        _uRe = @view u[1:t_steps*n_steps^2]
-        _uIm = @view u[t_steps*n_steps^2 + 1:end]
+        _uRe = @view u[1:t_steps*n_steps^3]
+        _uIm = @view u[t_steps*n_steps^3 + 1:end]
         
-        uRe = reshape(_uRe,t_steps,n_steps,n_steps)
-        uIm = reshape(_uIm,t_steps,n_steps,n_steps)
+        uRe = reshape(_uRe,t_steps,n_steps,n_steps,n_steps)
+        uIm = reshape(_uIm,t_steps,n_steps,n_steps,n_steps)
 
         _x = uRe + im * uIm
-        for i in 1:3
+        for i in 1:1
 
             _ARe = Zygote.Buffer(ARe)
             _AIm = Zygote.Buffer(AIm)
@@ -222,27 +222,32 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{2}}; H = KP.kernel.H)
             uRe = real(_x)
             uIm = imag(_x)
 
-            uRetm1 = @view uRe[gm1,:,:]
-            uRetp1 = @view uRe[gp1,:,:]
-            uRes1m1 = @view uRe[1:t_steps,gsm1,:]
-            uRes1p1 = @view uRe[1:t_steps,gsp1,:]
-            uRes2m1 = @view uRe[1:t_steps,:,gsm1]
-            uRes2p1 = @view uRe[1:t_steps,:,gsp1]
+            #uRe = @view _u[1:t_steps,:]
+            uRetm1 = @view uRe[gm1,:,:,:]
+            uRetp1 = @view uRe[gp1,:,:,:]
+            uRes1m1 = @view uRe[1:t_steps,gsm1,:,:]
+            uRes1p1 = @view uRe[1:t_steps,gsp1,:,:]
+            uRes2m1 = @view uRe[1:t_steps,:,gsm1,:]
+            uRes2p1 = @view uRe[1:t_steps,:,gsp1,:]
+            uRes3m1 = @view uRe[1:t_steps,:,:,gsm1]
+            uRes3p1 = @view uRe[1:t_steps,:,:,gsp1]
             
             #uIm = @view _u[t_steps+1:end,:]
-            uImtm1 = @view uIm[gm1,:,:]
-            uImtp1 = @view uIm[gp1,:,:]
-            uIms1m1 = @view uIm[1:t_steps,gsm1,:]
-            uIms1p1 = @view uIm[1:t_steps,gsp1,:]
-            uIms2m1 = @view uIm[1:t_steps,:,gsm1]
-            uIms2p1 = @view uIm[1:t_steps,:,gsp1]
+            uImtm1 = @view uIm[gm1,:,:,:]
+            uImtp1 = @view uIm[gp1,:,:,:]
+            uIms1m1 = @view uIm[1:t_steps,gsm1,:,:]
+            uIms1p1 = @view uIm[1:t_steps,gsp1,:,:]
+            uIms2m1 = @view uIm[1:t_steps,:,gsm1,:]
+            uIms2p1 = @view uIm[1:t_steps,:,gsp1,:]
+            uIms3m1 = @view uIm[1:t_steps,:,:,gsm1]
+            uIms3p1 = @view uIm[1:t_steps,:,:,gsp1]
 
             VRe = @. m * uRe + (λ/6) * (uRe^3 - 3*uRe*uIm^2)
             VIm = @. m * uIm - (λ/6) * (uIm^3 - 3*uIm*uRe^2)
 
-            @inbounds for I in CartesianIndices((t_steps,n_steps,n_steps))
+            @inbounds for I in CartesianIndices((t_steps,n_steps,n_steps,n_steps))
                 i,j,k,l = Tuple(I)
-                _ARe[i,j,k,l] = - as^2 * pre_fac * (
+                _ARe[i,j,k,l] = - as^3 * pre_fac * (
                         (uRe[i,j,k,l] - uRetm1[i,j,k,l])*one_over_a_m1_Im[i]
                     + (uIm[i,j,k,l] - uImtm1[i,j,k,l])*one_over_a_m1_Re[i]  
                     + (uRe[i,j,k,l] - uRetp1[i,j,k,l])*one_over_a_Im[i] 
@@ -250,25 +255,31 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{2}}; H = KP.kernel.H)
     
                     - V_pre_fac_Im[i] * ( (2uRe[i,j,k,l] - uRes1m1[i,j,k,l] - uRes1p1[i,j,k,l])*as_prefac_im + 
                                             (2uRe[i,j,k,l] - uRes2m1[i,j,k,l] - uRes2p1[i,j,k,l])*as_prefac_im +
+                                            (2uRe[i,j,k,l] - uRes3m1[i,j,k,l] - uRes3p1[i,j,k,l])*as_prefac_im +
                                             VRe[i,j,k,l])
                     - V_pre_fac_Re[i] * ( (2uIm[i,j,k,l] - uIms1m1[i,j,k,l] - uIms1p1[i,j,k,l])*as_prefac_re + 
                                             (2uIm[i,j,k,l] - uIms2m1[i,j,k,l] - uIms2p1[i,j,k,l])*as_prefac_re +
+                                            (2uIm[i,j,k,l] - uIms3m1[i,j,k,l] - uIms3p1[i,j,k,l])*as_prefac_re +
                                             VIm[i,j,k,l])
                     )
                 
-                _AIm[i,j,k,l] = as^2 * pre_fac * (
+                _AIm[i,j,k,l] = as^3 * pre_fac * (
                         (uRe[i,j,k,l] - uRetm1[i,j,k,l])*one_over_a_m1_Re[i] 
                     - (uIm[i,j,k,l] - uImtm1[i,j,k,l])*one_over_a_m1_Im[i]  
                     + (uRe[i,j,k,l] - uRetp1[i,j,k,l])*one_over_a_Re[i] 
                     - (uIm[i,j,k,l] - uImtp1[i,j,k,l])*one_over_a_Im[i]
             
                     - V_pre_fac_Re[i] * ( (2uRe[i,j,k,l] - uRes1m1[i,j,k,l] - uRes1p1[i,j,k,l])*as_prefac_re + 
-                                            (2uRe[i,j,k,l] - uRes2m1[i,j,k,l] - uRes2p1[i,j,k,l])*as_prefac_re +    
+                                            (2uRe[i,j,k,l] - uRes2m1[i,j,k,l] - uRes2p1[i,j,k,l])*as_prefac_re +  
+                                            (2uRe[i,j,k,l] - uRes3m1[i,j,k,l] - uRes3p1[i,j,k,l])*as_prefac_re +    
                                             VRe[i,j,k,l])
                     + V_pre_fac_Im[i] * ( (2uIm[i,j,k,l] - uIms1m1[i,j,k,l] - uIms1p1[i,j,k,l])*as_prefac_im +
                                             (2uIm[i,j,k,l] - uIms2m1[i,j,k,l] - uIms2p1[i,j,k,l])*as_prefac_im + 
+                                            (2uIm[i,j,k,l] - uIms3m1[i,j,k,l] - uIms3p1[i,j,k,l])*as_prefac_im + 
                                         VIm[i,j,k,l])
                     )
+                    #end
+                #end
             end
             _A_tmp = copy(_ARe) + im*copy(_AIm)
 
@@ -278,14 +289,13 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{2}}; H = KP.kernel.H)
 
             _A = im_pre_fac_KC * vec(_A_tmp)
 
-            _x += reshape(_A * dt,t_steps,n_steps,n_steps)
+            _x += reshape(_A * dt,t_steps,n_steps,n_steps,n_steps)
         end
 
         return _x
         #return sum(imag(_x).^2) + sum(real(_x).^2)
 
     end
-
     XX = [g(u) for u in eachrow(sol_tr')]
 
     xRe = sum( abs2.(StatsBase.mean([real(_x) for _x in XX]) ) )
