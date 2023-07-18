@@ -2,7 +2,7 @@
 """
     Calculate the observables for each of the trajectories
 """
-function calc_obs(KP::KernelProblem{ScalarField{D}},sol;onlyCorr=false) where {D}
+function calc_obs(KP::KernelProblem{ScalarField{D}},sol;onlyCorr=false, max_inx = nothing) where {D}
     t_steps = KP.model.contour.t_steps
     n_steps = KP.model.n_steps
 
@@ -10,6 +10,10 @@ function calc_obs(KP::KernelProblem{ScalarField{D}},sol;onlyCorr=false) where {D
     
     if length(sol) == 1
         sol = sol[1]
+    end
+
+    if isnothing(max_inx)
+        max_inx = length(sol)
     end
 
     if sol isa SciMLBase.RODESolution
@@ -30,7 +34,7 @@ function calc_obs(KP::KernelProblem{ScalarField{D}},sol;onlyCorr=false) where {D
         dt = sol.t[end] .- sol.t[end-1]
         nn = 1.0 / dt
 
-        _u = Array(sol)
+        _u = Array(sol)[:,1:max_inx]
         _uRe = @view _u[1:t_steps*n_steps^D,:]
         _uIm = @view _u[t_steps*n_steps^D + 1:end,:]
         
