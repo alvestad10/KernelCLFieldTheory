@@ -210,13 +210,25 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{1}}; H = KP.kernel.H)
         end
 
         
-        return sum(imag(_x).^2) + sum(real(_x).^2)
+        return _x
+        #return sum(imag(_x).^2) + sum(real(_x).^2)
 
     end
 
-    return sum(
-        mean(g(u) for u in eachrow(sol_tr'))
-        )
+    XX = [g(u) for u in eachrow(sol_tr')]
+
+    xRe = sum( abs2.(StatsBase.mean([real(_x) for _x in XX]) ) )
+    xIm = sum( abs2.(StatsBase.mean([imag(_x) for _x in XX]) ) )
+
+    x2Re = sum( abs2.(StatsBase.mean([real(_x).^2 .- imag(_x).^2 for _x in XX]) .- KP.y["phi2Re"]) )
+    x2Im = sum( abs2.(StatsBase.mean([2 .* real(_x) .* imag(_x) for _x in XX]) .- KP.y["phi2Im"]) )
+
+    imx = sum( abs.(StatsBase.mean([imag(_x).^2 + real(_x).^2 for _x in XX])) )
+
+    return xRe + xIm + 5*x2Re + x2Im + imx
+    # return sum(
+    #     mean(g(u) for u in eachrow(sol_tr'))
+    #     )
 
 end
 
