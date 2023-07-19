@@ -31,7 +31,7 @@ function get_ab(model::ScalarField{2},kernel::MatrixKernel{T}) where {T <: Real}
     V_pre_fac_Re = real(V_pre_fac) #hcat([real(V_pre_fac) for i in 1:n_steps]...)
     V_pre_fac_Im = imag(V_pre_fac) #hcat([imag(V_pre_fac) for i in 1:n_steps]...)
 
-    pre_fac = (1. / abs(a[1]))
+    pre_fac = (1. / (abs(a[1])))
     #im_pre_fac = im*pre_fac
 
     isIdentity = all(diag(H) .- 1. .== 0.0)
@@ -78,7 +78,7 @@ function get_ab(model::ScalarField{2},kernel::MatrixKernel{T}) where {T <: Real}
         @. VIm = m * uIm - (λ/6) * (uIm^3 - 3*uIm*uRe^2)
  
 
-        @inbounds for I in CartesianIndices((t_steps,n_steps,n_steps))
+        @inbounds @fastmath for I in CartesianIndices((t_steps,n_steps,n_steps))
             i,j,k = Tuple(I)
             ARe[i,j,k] = - as^2 * pre_fac * (
                     (uRe[i,j,k] - uRetm1[i,j,k])*one_over_a_m1_Im[i]
@@ -225,7 +225,7 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{2}}; H = KP.kernel.H)
         uIm = reshape(_uIm,t_steps,n_steps,n_steps)
 
         _x = uRe + im * uIm
-        for i in 1:3
+        for i in 1:1
 
             _ARe = Zygote.Buffer(ARe)
             _AIm = Zygote.Buffer(AIm)
@@ -283,10 +283,6 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{2}}; H = KP.kernel.H)
             end
             _A_tmp = copy(_ARe) + im*copy(_AIm)
 
-            # _A_tmp =    @. ((_x - _x[gtm1,:]) / (a_m1 .- κ) + (_x - _x[gtp1,:]) / (a .- κ)  - 
-            #                 (a + a_m1)/2 * ( (2*_x - _x[:,gsm1] - _x[:,gsp1]) * as_prefac 
-            #                     +  (m * _x + (λ/6) * _x^3)))
-
             _A = im_pre_fac_KC * vec(_A_tmp)
 
             _x += reshape(_A * dt,t_steps,n_steps,n_steps)
@@ -298,15 +294,16 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{2}}; H = KP.kernel.H)
     end
 
     XX = [g(u) for u in eachrow(sol_tr')]
+    XP0 = [mean(X) for X in XX]
 
-    xRe = sum( abs2.(StatsBase.mean([real(_x) for _x in XX]) ) )
-    xIm = sum( abs2.(StatsBase.mean([imag(_x) for _x in XX]) ) )
+    xRe = abs2.(StatsBase.mean([real(_x) for _x in XP0]) )
+    xIm = abs2.(StatsBase.mean([imag(_x) for _x in XP0]) )
 
-    x2Re = "phi2Re" in keys(KP.y) ? sum( abs2.(StatsBase.mean([real(_x).^2 .- imag(_x).^2 for _x in XX]) .- KP.y["phi2Re"]) ) : 0.
-    x2Im = sum( abs2.(StatsBase.mean([2 .* real(_x) .* imag(_x) for _x in XX]) .- KP.y["phi2Im"]) )
+    x2Re = abs2.(StatsBase.mean([real(_x)^2 - imag(_x)^2 for _x in XP0]) - KP.y["phi2Re"])
+    x2Im = abs2.(StatsBase.mean([2 * real(_x) * imag(_x) for _x in XP0]) - KP.y["phi2Im"])
 
     imx = sum( abs.(StatsBase.mean([imag(_x).^2 + real(_x).^2 for _x in XX])) )
-
+   
     return xRe + xIm + 10*x2Re + x2Im + imx
 
     # return sum(
