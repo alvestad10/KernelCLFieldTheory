@@ -5,7 +5,7 @@ export RunSetup, run_simulation
 """
 @with_kw mutable struct RunSetup
     tspan=20
-    NTr = 10
+    NTr = 1
     saveat=0.01
     scheme=ImplicitEM() 
     dt=1e-4
