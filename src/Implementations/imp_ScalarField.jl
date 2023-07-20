@@ -216,8 +216,8 @@ end
 """
 function getdH_imx(sol,KP::KernelProblem{ScalarField{D}}) where {D}
     dKs = [zeros(size(KP.kernel.H)) for i in 1:length(sol)]
-    for (i,tr) in enumerate(sol)
-        dKs[i] = Zygote.gradient(H -> calcIMXLoss(tr,KP, H=H), KP.kernel.H)[1]
+    Threads.@threads for i in eachindex(sol)
+        dKs[i] = Zygote.gradient(H -> calcIMXLoss(sol[i],KP, H=H), KP.kernel.H)[1]
     end
 
     return reshape(mean(dKs),size(KP.kernel.H))
