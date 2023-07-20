@@ -5,7 +5,7 @@ To run the code you need a version of Julia installed, then you can make separat
 
 ## Instantiate
 
-To initialize the project run these lines inside the Julia REPL (From inside the project directory)
+To start out with this project you need a version of julia installed and a cloned version of this repository. Before we can run the code we need to instantiate the Julia environment for the packages. To this we need to initialize the project run these lines inside the Julia REPL (From inside the project directory)
 ```julia
     import Pkg
     Pkg.activate(".")
@@ -13,7 +13,23 @@ To initialize the project run these lines inside the Julia REPL (From inside the
 ```
 For more information see: https://docs.julialang.org/en/v1/stdlib/Pkg/
 
-Now all dependencies should be downloaded and the code is ready to be run.
+Now all dependencies should be downloaded and the code is ready to be run. Remember that if one starte Julia from the terminal, you need to start it using `julia --project=.` when inside the root directory of the repository.
+
+The project is setup as a package, which means that the general structure contains a `src/` folder which contains the module `KernelCLFieldThoery` which we need to load to use the componenets, then a Project.toml which contains all the packages used, and then some run files in the root folder. These can be altered for the process to be run. 
+
+## Main parts of the project
+
+The project have 4 main components;
+- Model; implementation can be found in `src/Model.jl` which contains the model structure. Part of the model is also the contour. 
+  - The ScalaField struct is defined such that we pass in the dimension D, and all the other parameters. The default is: `ScalarField_from_at(;D=1,m=1.,λ=0.1,RT=1.6,β=0.4,at=0.2,n_steps=8,as=0.2,kwargs...)`
+  - In the kwargs on can pass the contour parameters. Default here is the canonical contour, while Δβ = 0.5 must be used for the split SK contour (Alexandru2016) and ΔE = 0.0 for tilted SK contour (or larger if also forward tilt)
+- Kernel (`src/Kernel.jl`); implements a structure for the kernel we use. Now this is essentially only a matrix H, and the corresponding  funciton to get K.
+- KernelProblem; this is to make a type putting together the model with a kernel, drift term and noise term. This is convenient as we can just pass this to the run_simulation function since this contains all necessary information to run the simulation.
+- Finally we have the LearnKernel component, which takes the KernelProblem as input, and thenrun the kernel optimization algorithm. 
+
+
+These components can be used in scripts to simulate what we need. Under us some examples how to use them
+
 
 ## Example 1
 First a simple example to run the 1+1D Field theory on the split Schwinger-Keldysh contour (Alexandru2016) without a kernel up to 0.6 in real-time, and then plotting the result
