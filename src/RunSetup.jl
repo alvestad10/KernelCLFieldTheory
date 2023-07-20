@@ -33,7 +33,7 @@ function run_simulation(KP::KernelProblem, runSetup::RunSetup; seed=nothing, u0 
     if isnothing(u0)
         u0 = [get_initial_value(model,T) for i in 1:NTr]
     else
-        #tspan_thermalization = 0.01
+        tspan_thermalization = 0.01
     end
 
     noise_rate_prototype = get_noise_rate_prototype(model,T)
@@ -43,7 +43,7 @@ function run_simulation(KP::KernelProblem, runSetup::RunSetup; seed=nothing, u0 
         if isnothing(seed)
             prob = remake(prob, p=caches[i], u0=u0[i])
         else
-            prob = remake(prob, seed=seed + i, p.caches[i], u0=u0[i])
+            prob = remake(prob, seed=seed + i, p = caches[i], u0=u0[i])
         end
     end
     
