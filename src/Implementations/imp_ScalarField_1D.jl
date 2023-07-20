@@ -196,13 +196,23 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{1}}; H = KP.kernel.H)
         
         uRe = reshape(_uRe,t_steps,n_steps)
         uIm = reshape(_uIm,t_steps,n_steps)
-
+        
         _x = uRe + im * uIm
+        _xtm1 = @view _x[gtm1,:]
+        _xtp1 = @view _x[gtp1,:]
+        _xsm1 = @view _x[:,gsm1]
+        _xsp1 = @view _x[:,gsp1]
+
         for i in 1:3
 
-            _A_tmp =    @. ((_x - _x[gtm1,:]) / (a_m1 .- κ) + (_x - _x[gtp1,:]) / (a .- κ)  - 
-                            (a + a_m1)/2 * ( (2*_x - _x[:,gsm1] - _x[:,gsp1]) * as_prefac 
-                                +  (m * _x + (λ/6) * _x^3)))
+            # _A_tmp =    @. ((_x - _x[gtm1,:]) / (a_m1 .- κ) + (_x - _x[gtp1,:]) / (a .- κ)  - 
+            #                 (a + a_m1)/2 * ( (2*_x - _x[:,gsm1] - _x[:,gsp1]) * as_prefac 
+            #                     +  (m * _x + (λ/6) * _x^3)))
+
+
+            @tullio _A_tmp[i,j] := ((_x[i,j] - _xtm1[i,j]) / (a_m1[i] - κ) + (_x[i,j] - _xtp1[i,j]) / (a[i] - κ)  - 
+                            (a[i] + a_m1[i])/2 * ( (2*_x[i,j] - _xsm1[i,j] - _xsp1[i,j]) * as_prefac 
+                                +  (m * _x[i,j] + (λ/6) * _x[i,j]^3)))
 
             _A = im_pre_fac_KC * vec(_A_tmp)
 
@@ -210,26 +220,27 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{1}}; H = KP.kernel.H)
         end
 
         
-        return _x
-        #return sum(imag(_x).^2) + sum(real(_x).^2)
+        #return _x
+        return sum(imag(_x).^2) # + sum(real(_x).^2)
 
     end
 
-    XX = [g(u) for u in eachrow(sol_tr')]
+    # XX = [g(u) for u in eachrow(sol_tr')]
+    # XP0 = [mean(X,dims=2) for X in XX]
 
-    xRe = sum( abs2.(StatsBase.mean([real(_x) for _x in XX]) ) )
-    xIm = sum( abs2.(StatsBase.mean([imag(_x) for _x in XX]) ) )
+    # xRe = sum( abs2.(StatsBase.mean([real(X) for X in XP0]) ) )
+    # xIm = sum( abs2.(StatsBase.mean([imag(X) for X in XP0]) ) )
 
-    x2Re = sum( abs2.(StatsBase.mean([real(_x).^2 .- imag(_x).^2 for _x in XX]) .- KP.y["phi2Re"]) )
-    x2Im = sum( abs2.(StatsBase.mean([2 .* real(_x) .* imag(_x) for _x in XX]) .- KP.y["phi2Im"]) )
+    # x2Re = sum( abs2.(StatsBase.mean([real(X).^2 .- imag(X).^2 for X in XP0]) .- KP.y["phi2Re"]) )
+    # x2Im = sum( abs2.(StatsBase.mean([2 .* real(X) .* imag(X) for X in XP0]) .- KP.y["phi2Im"]) )
 
-    imx = sum( abs.(StatsBase.mean([imag(_x).^2 + real(_x).^2 for _x in XX])) )
+    # imx = sum( abs.(StatsBase.mean([imag(_x) for _x in XX])) )
+    # rex = sum( abs.(StatsBase.mean([real(_x) for _x in XX])) )
 
-    return xRe + xIm + 5*x2Re + x2Im + imx
-    # return sum(
-    #     mean(g(u) for u in eachrow(sol_tr'))
-    #     )
+
+    # return xRe + xIm + 5*x2Re + x2Im + imx
+    return sum(
+        mean(g(u) for u in eachrow(sol_tr'))
+        )
 
 end
-
-
