@@ -194,7 +194,7 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{2}}; H = KP.kernel.H)
     
     im_pre_fac_KC = KC*im*pre_fac
 
-    dt = 1e-3
+    dt = 1e-5
     κ = im*1e-2
 
     g(u) = begin
@@ -232,19 +232,19 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{2}}; H = KP.kernel.H)
     end
 
     XX = [g(u) for u in eachrow(sol_tr')]
-    # XP0 = [mean(X,dims=2) for X in XX]
+    XP0 = [mean(X,dims=2) for X in XX]
 
-    # xRe = sum( abs2.(StatsBase.mean([real(X) for X in XP0]) ) )
-    # xIm = sum( abs2.(StatsBase.mean([imag(X) for X in XP0]) ) )
+    xRe = sum( abs2.(StatsBase.mean([real(X) for X in XP0]) ) )
+    xIm = sum( abs2.(StatsBase.mean([imag(X) for X in XP0]) ) )
 
-    # x2Re = sum( abs2.(StatsBase.mean([real(X).^2 .- imag(X).^2 for X in XP0]) .- KP.y["phi2Re"]) )
-    # x2Im = sum( abs2.(StatsBase.mean([2 .* real(X) .* imag(X) for X in XP0]) .- KP.y["phi2Im"]) )
+    x2Re = sum( abs2.(StatsBase.mean([real(X).^2 .- imag(X).^2 for X in XP0]) .- KP.y["phi2Re"]) )
+    x2Im = sum( abs2.(StatsBase.mean([2 .* real(X) .* imag(X) for X in XP0]) .- KP.y["phi2Im"]) )
 
     imx = sum( abs.(StatsBase.mean([imag(_x).^2 for _x in XX])) )
-    #rex = sum( abs2.(StatsBase.mean([real(_x).^2 for _x in XX])) )
+    rex = sum( abs2.(StatsBase.mean([real(_x).^2 for _x in XX])) )
 
-    #return xRe + xIm + x2Re + x2Im + imx + rex
-    return  imx #+ x2Re 
+    return xRe + xIm + x2Re + x2Im + 10*imx + rex
+    #return  imx #+ x2Re 
     
     # return sum(
     #     mean(g(u) for u in eachrow(sol_tr'))

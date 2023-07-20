@@ -1,4 +1,5 @@
 export RunSetup, run_simulation
+export LambaEM, ImplicitEM
 
 """
     Parameters for the simulation

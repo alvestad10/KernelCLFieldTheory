@@ -41,9 +41,11 @@ function calc_obs(KP::KernelProblem{ScalarField{D}},sol;onlyCorr=false, max_inx 
         _uu = zeros(2t_steps,size(_u)[2])
 
         @inbounds for i in 1:n_steps
-            for j in 1:n_steps^(D-1)
-                _uu[1:t_steps,:] .+= @view _uRe[(j-1)*t_steps*n_steps + (i-1)*t_steps .+ (1:t_steps),:]
-                _uu[t_steps+1:end,:] .+= @view _uIm[(j-1)*t_steps*n_steps + (i-1)*t_steps .+ (1:t_steps),:]
+                  for j in 1:n_steps^(D-1 > 0 ? 1 : 0)
+                  for k in 1:n_steps^(D-2 > 0 ? 1 : 0)
+                    _uu[1:t_steps,:] .+= @view _uRe[(k-1)*t_steps*n_steps^2 + (j-1)*t_steps*n_steps + (i-1)*t_steps .+ (1:t_steps),:]
+                    _uu[t_steps+1:end,:] .+= @view _uIm[(k-1)*t_steps*n_steps^2 + (j-1)*t_steps*n_steps + (i-1)*t_steps .+ (1:t_steps),:]
+                  end
             end
         end
 
@@ -134,10 +136,14 @@ function calc_obs(KP::KernelProblem{ScalarField{D}},sol;onlyCorr=false, max_inx 
             _uIm = @view _u[t_steps*n_steps^D + 1:end,:]
             
             _uu = zeros(2t_steps,size(_u)[2])
-            for i in 1:n_steps
-                _uu[1:t_steps,:] .= _uRe[(i-1)*t_steps .+ (1:t_steps),:]
-                _uu[t_steps+1:end,:] .= _uIm[(i-1)*t_steps .+ (1:t_steps),:]
-            end
+            @inbounds for i in 1:n_steps
+                for j in 1:n_steps^(D-1)
+                for k in 1:ceil(Int,n_steps^(D-2))
+                  _uu[1:t_steps,:] .+= @view _uRe[(k-1)*t_steps*n_steps^2 + (j-1)*t_steps*n_steps + (i-1)*t_steps .+ (1:t_steps),:]
+                  _uu[t_steps+1:end,:] .+= @view _uIm[(k-1)*t_steps*n_steps^2 + (j-1)*t_steps*n_steps + (i-1)*t_steps .+ (1:t_steps),:]
+                end
+                end
+                end
 
             phi_p_Re = (@view _uu[1:t_steps,:]) / n_steps^D #mean(_uu[1:t_steps,:,:,:],dims=(2,3))[:,1,1,:]
             phi_p_Im = (@view _uu[t_steps+1:end,:]) / n_steps^D #mean(_uu[t_steps+1:end,:,:,:],dims=(2,3))[:,1,1,:]
