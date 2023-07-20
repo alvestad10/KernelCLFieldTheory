@@ -8,6 +8,7 @@ using Parameters
 using StochasticDiffEq
 using Flux
 using Zygote
+using Tullio
 
 using Logging: global_logger
 using TerminalLoggers: TerminalLogger

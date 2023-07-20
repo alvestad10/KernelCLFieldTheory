@@ -211,10 +211,6 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{2}}; H = KP.kernel.H)
     
     im_pre_fac_KC = KC*im*pre_fac
 
-    
-
-    ARe = zeros(t_steps,n_steps,n_steps)
-    AIm = zeros(t_steps,n_steps,n_steps)
 
     g(u) = begin
 
@@ -225,10 +221,8 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{2}}; H = KP.kernel.H)
         uIm = reshape(_uIm,t_steps,n_steps,n_steps)
 
         _x = uRe + im * uIm
-        for i in 1:1
+        for i in 1:5
 
-            _ARe = Zygote.Buffer(ARe)
-            _AIm = Zygote.Buffer(AIm)
 
             uRe = real(_x)
             uIm = imag(_x)
@@ -240,7 +234,6 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{2}}; H = KP.kernel.H)
             uRes2m1 = @view uRe[1:t_steps,:,gsm1]
             uRes2p1 = @view uRe[1:t_steps,:,gsp1]
             
-            #uIm = @view _u[t_steps+1:end,:]
             uImtm1 = @view uIm[gm1,:,:]
             uImtp1 = @view uIm[gp1,:,:]
             uIms1m1 = @view uIm[1:t_steps,gsm1,:]
@@ -248,40 +241,35 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{2}}; H = KP.kernel.H)
             uIms2m1 = @view uIm[1:t_steps,:,gsm1]
             uIms2p1 = @view uIm[1:t_steps,:,gsp1]
 
-            VRe = @. m * uRe + (λ/6) * (uRe^3 - 3*uRe*uIm^2)
-            VIm = @. m * uIm - (λ/6) * (uIm^3 - 3*uIm*uRe^2)
+            @tullio ARe[i,j,k] := - as^2 * pre_fac * (
+                    (uRe[i,j,k] - uRetm1[i,j,k])*one_over_a_m1_Im[i]
+                + (uIm[i,j,k] - uImtm1[i,j,k])*one_over_a_m1_Re[i]  
+                + (uRe[i,j,k] - uRetp1[i,j,k])*one_over_a_Im[i] 
+                + (uIm[i,j,k] - uImtp1[i,j,k])*one_over_a_Re[i]
 
-            @inbounds for I in CartesianIndices((t_steps,n_steps,n_steps))
-                i,j,k = Tuple(I)
-                _ARe[i,j,k] = - as^2 * pre_fac * (
-                        (uRe[i,j,k] - uRetm1[i,j,k])*one_over_a_m1_Im[i]
-                    + (uIm[i,j,k] - uImtm1[i,j,k])*one_over_a_m1_Re[i]  
-                    + (uRe[i,j,k] - uRetp1[i,j,k])*one_over_a_Im[i] 
-                    + (uIm[i,j,k] - uImtp1[i,j,k])*one_over_a_Re[i]
-    
-                    - V_pre_fac_Im[i] * ( (2uRe[i,j,k] - uRes1m1[i,j,k] - uRes1p1[i,j,k])*as_prefac_im + 
-                                            (2uRe[i,j,k] - uRes2m1[i,j,k] - uRes2p1[i,j,k])*as_prefac_im +
-                                            VRe[i,j,k])
-                    - V_pre_fac_Re[i] * ( (2uIm[i,j,k] - uIms1m1[i,j,k] - uIms1p1[i,j,k])*as_prefac_re + 
-                                            (2uIm[i,j,k] - uIms2m1[i,j,k] - uIms2p1[i,j,k])*as_prefac_re +
-                                            VIm[i,j,k])
-                    )
-                
-                _AIm[i,j,k] = as^2 * pre_fac * (
-                        (uRe[i,j,k] - uRetm1[i,j,k])*one_over_a_m1_Re[i] 
-                    - (uIm[i,j,k] - uImtm1[i,j,k])*one_over_a_m1_Im[i]  
-                    + (uRe[i,j,k] - uRetp1[i,j,k])*one_over_a_Re[i] 
-                    - (uIm[i,j,k] - uImtp1[i,j,k])*one_over_a_Im[i]
+                - V_pre_fac_Im[i] * ( (2uRe[i,j,k] - uRes1m1[i,j,k] - uRes1p1[i,j,k])*as_prefac_im + 
+                                        (2uRe[i,j,k] - uRes2m1[i,j,k] - uRes2p1[i,j,k])*as_prefac_im +
+                                        m * uRe[i,j,k] + (λ/6) * (uRe[i,j,k]^3 - 3*uRe[i,j,k]*uIm[i,j,k]^2))
+                - V_pre_fac_Re[i] * ( (2uIm[i,j,k] - uIms1m1[i,j,k] - uIms1p1[i,j,k])*as_prefac_re + 
+                                        (2uIm[i,j,k] - uIms2m1[i,j,k] - uIms2p1[i,j,k])*as_prefac_re +
+                                        m * uIm[i,j,k] - (λ/6) * (uIm[i,j,k]^3 - 3*uIm[i,j,k]*uRe[i,j,k]^2))
+                )
             
-                    - V_pre_fac_Re[i] * ( (2uRe[i,j,k] - uRes1m1[i,j,k] - uRes1p1[i,j,k])*as_prefac_re + 
-                                            (2uRe[i,j,k] - uRes2m1[i,j,k] - uRes2p1[i,j,k])*as_prefac_re +    
-                                            VRe[i,j,k])
-                    + V_pre_fac_Im[i] * ( (2uIm[i,j,k] - uIms1m1[i,j,k] - uIms1p1[i,j,k])*as_prefac_im +
-                                            (2uIm[i,j,k] - uIms2m1[i,j,k] - uIms2p1[i,j,k])*as_prefac_im + 
-                                        VIm[i,j,k])
-                    )
-            end
-            _A_tmp = copy(_ARe) + im*copy(_AIm)
+            @tullio AIm[i,j,k] := as^2 * pre_fac * (
+                    (uRe[i,j,k] - uRetm1[i,j,k])*one_over_a_m1_Re[i] 
+                - (uIm[i,j,k] - uImtm1[i,j,k])*one_over_a_m1_Im[i]  
+                + (uRe[i,j,k] - uRetp1[i,j,k])*one_over_a_Re[i] 
+                - (uIm[i,j,k] - uImtp1[i,j,k])*one_over_a_Im[i]
+        
+                - V_pre_fac_Re[i] * ( (2uRe[i,j,k] - uRes1m1[i,j,k] - uRes1p1[i,j,k])*as_prefac_re + 
+                                        (2uRe[i,j,k] - uRes2m1[i,j,k] - uRes2p1[i,j,k])*as_prefac_re +    
+                                        uRe[i,j,k] + (λ/6) * (uRe[i,j,k]^3 - 3*uRe[i,j,k]*uIm[i,j,k]^2))
+                + V_pre_fac_Im[i] * ( (2uIm[i,j,k] - uIms1m1[i,j,k] - uIms1p1[i,j,k])*as_prefac_im +
+                                        (2uIm[i,j,k] - uIms2m1[i,j,k] - uIms2p1[i,j,k])*as_prefac_im + 
+                                        uIm[i,j,k] - (λ/6) * (uIm[i,j,k]^3 - 3*uIm[i,j,k]*uRe[i,j,k]^2))
+                )
+
+            _A_tmp = ARe + im*AIm
 
             _A = im_pre_fac_KC * vec(_A_tmp)
 
@@ -294,17 +282,17 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{2}}; H = KP.kernel.H)
     end
 
     XX = [g(u) for u in eachrow(sol_tr')]
-    XP0 = [mean(X) for X in XX]
+    # XP0 = [mean(X) for X in XX]
 
-    xRe = abs2.(StatsBase.mean([real(_x) for _x in XP0]) )
-    xIm = abs2.(StatsBase.mean([imag(_x) for _x in XP0]) )
+    # xRe = abs2.(StatsBase.mean([real(_x) for _x in XP0]) )
+    # xIm = abs2.(StatsBase.mean([imag(_x) for _x in XP0]) )
 
-    x2Re = abs2.(StatsBase.mean([real(_x)^2 - imag(_x)^2 for _x in XP0]) - KP.y["phi2Re"])
-    x2Im = abs2.(StatsBase.mean([2 * real(_x) * imag(_x) for _x in XP0]) - KP.y["phi2Im"])
+    # x2Re = abs2.(StatsBase.mean([real(_x)^2 - imag(_x)^2 for _x in XP0]) - KP.y["phi2Re"])
+    # x2Im = abs2.(StatsBase.mean([2 * real(_x) * imag(_x) for _x in XP0]) - KP.y["phi2Im"])
 
-    imx = sum( abs.(StatsBase.mean([imag(_x).^2 + real(_x).^2 for _x in XX])) )
+    imx = sum( abs.(StatsBase.mean([imag(_x).^2 .+ real(_x).^2 for _x in XX])) )
    
-    return xRe + xIm + 10*x2Re + x2Im + imx
+    return imx #xRe + xIm + 10*x2Re + x2Im + imx
 
     # return sum(
     #     mean(g(u) for u in eachrow(sol_tr'))
