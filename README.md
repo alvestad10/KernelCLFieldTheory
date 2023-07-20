@@ -1,7 +1,9 @@
 # KernelCLFieldTheory
 
 
-To run the code you need a version of Julia installed, then you can make separate scripts or follow the RunScalarFieldOptimization.jl file which can be run in bash using `julia --project=. RunScalarFieldOptimization.jl` or line by line using the Julia vscode extension. Before you run the code follow the Instantite section below to setup the necessary packages.
+To run the code you need a version of Julia installed, then you can make separate scripts or follow the RealTimeScalaField.jl file which can be run in bash using `julia --project=. RealTimeScalaField.jl` or line by line using the Julia vscode extension. Before you run the code follow the Instantite section below to setup the necessary packages.
+
+TODO: At the moment RealTimeScalaField.jl does not save figures or configurations.
 
 ## Instantiate
 
@@ -32,52 +34,98 @@ These components can be used in scripts to simulate what we need. Under us some 
 
 
 ## Example 1
-First a simple example to run the 1+1D Field theory on the split Schwinger-Keldysh contour (Alexandru2016) without a kernel up to 0.6 in real-time, and then plotting the result
+First a simple example to run the 1+1D Field theory on the split Schwinger-Keldysh contour (Alexandru2016) without a kernel up to 1.0 in real-time, and then plotting the result. (This is the content of )
 
 ```julia
 using KernelCLFieldTheory
-
-M = ScalarField_from_at(D=1,m=1.0,λ=1.0,RT=0.6,β=0.4,at=0.2,n_steps=8,as=0.2,
-                        Δβ = 0.5                
-)
-KP = KernelCLFieldTheory.KernelProblem(M)
-RS = RunSetup(NTr=1, tspan=1000, saveat=0.01, dt=1e-4, dtmax=1e-3, adaptive=true)
-
-@time sol = run_simulation(KP,RS);
-
-plotSKContour(KP,sol)
-```
-
-
-## Example 2
-
-Second a simple example to learn a kernel for the 1+1D Field Theory on the split Schwinger-Keldysh contour (Alexandru2016) up to 1.0 in real-time
-
-```julia
-using KernelCLFieldTheory
-using Plots
-using Zygote
-using Measurements
-using Statistics
-using LinearAlgebra
-
-
 M = ScalarField_from_at(D=1,m=1.0,λ=1.0,RT=1.0,β=0.4,at=0.2,n_steps=8,as=0.2,
                         Δβ = 0.5                
                         #ΔE = 0.0              
 )
 
 KP = KernelCLFieldTheory.KernelProblem(M);
-RS_train = RunSetup(NTr=1, tspan=20, saveat=0.1, dt=1e-4, dtmax=1e-3, adaptive=true)
-RS_val = deepcopy(RS_train)
-RS_val.tspan = 1000
-RS_val.scheme = KernelCLFieldTheory.LambaEM()
+RS = RunSetup(tspan=20, 
+                    tspan_thermalization=1000,  
+                    scheme=LambaEM()
+)
 
-lhistory = Dict(:L => [], :LSym => [], :evalsK => [], :detK => [], :symK => [])
+@time sol = run_simulation(KP,RS);
+plotSKContour(KP,sol)
+plotFWContour(KP,sol)
+```
 
-cb(KP::KernelProblem;sol=sol,addtohistory=false) = begin
 
-    display(plotSKContour(KP,sol))
+## Example 2
+
+Second a simple example to learn a kernel for the 1+1D Field Theory on the split Schwinger-Keldysh contour (Alexandru2016) up to 1.6 in real-time
+
+```julia
+using KernelCLFieldTheory
+
+
+M = ScalarField_from_at(D=1,m=1.0,λ=1.0,RT=1.6,β=0.4,at=0.2,n_steps=8,as=0.2,
+                        Δβ = 0.5                
+                        #ΔE = 0.0              
+)
+
+KP = KernelCLFieldTheory.KernelProblem(M);
+
+############################################################################
+#    RunSetup
+#
+#    Contains the parameters for the simulation
+#
+#    Under is the changes from the default
+#
+#    Note: The termalization is removed is u0 initialized from end of 
+#    previous run
+############################################################################
+RS_train = RunSetup(tspan=20, 
+                    tspan_thermalization=1000,  
+                    scheme=LambaEM()
+)
+
+# The validation setup
+RS_val = RunSetup(tspan=100, 
+                    tspan_thermalization=1000, 
+                    scheme=LambaEM()
+)
+
+# The testing setup
+RS_test = RunSetup(tspan=5000, 
+                    tspan_thermalization=1000, 
+                    scheme=LambaEM()
+)
+
+
+############################################################################
+#    Kernel Optimization setup
+############################################################################
+opt = ADAM(0.001, (0.5, 0.9))
+epochs = 5
+runs_pr_epoch = 5
+
+
+
+############################################################################
+#    Setting up the callback function
+#
+#   The callback function is called after each iteration of the optimization
+#   algorithm. It is used to monitor the progress of the optimization. 
+#
+#   The Callback function cb can be changed to suit the needs of the user.
+#   
+#   The callback function stores intermediate results in the lhistory_train
+#   and lhistory_val dictionaries.
+############################################################################
+lhistory_val = Dict(:L => [], :LSym => [], :evalsK => [], :detK => [], :symK => [])
+lhistory_train = Dict(:L => [], :LSym => [], :evalsK => [], :detK => [], :symK => [])
+
+cb(sol,KP::KernelProblem;type="val",show_plot=false, verbose=true) = begin
+
+    if show_plot
+        display(plotSKContour(KP,sol))
+    end
 
     LTrain = mean(KernelCLFieldTheory.calcIMXLoss(sol[tr],KP) for tr in eachindex(sol))
     LSym =  KernelCLFieldTheory.calcSymLoss(sol,KP)
@@ -86,10 +134,16 @@ cb(KP::KernelProblem;sol=sol,addtohistory=false) = begin
     KC = KRe .+ im * KIm
     evals = eigvals(KC)
 
+    if verbose
+        print("  LTrain: ", round(LTrain,digits=5), ", LSym: ", round(LSym,digits=5))#, ", TLoss: ", round(TLoss,digits=5), ", LSym: ", round(LSym,digits=5),", LCorr: ", round(LCorr,digits=5))
+    end
 
-    println("LTrain: ", round(LTrain,digits=5), ", LSym: ", round(LSym,digits=5))#, ", TLoss: ", round(TLoss,digits=5), ", LSym: ", round(LSym,digits=5),", LCorr: ", round(LCorr,digits=5))
+    lhistory = lhistory_val
+    if type == "train"
+        lhistory = lhistory_train
+    end
 
-    if addtohistory
+    if !isnothing(lhistory)
         append!(lhistory[:L],LTrain)
         append!(lhistory[:LSym],LSym)
         push!(lhistory[:evalsK],evals)
@@ -99,35 +153,44 @@ cb(KP::KernelProblem;sol=sol,addtohistory=false) = begin
     return LSym
 end
 
-bestKernel = learnKernel(KP,RS_train; RS_val=RS_val, cb=cb)
 
+
+############################################################################
+#    Optimization
+############################################################################
+LK = LearnKernel(KP,RS_train;RS_val=RS_val, 
+                 opt=opt, epochs=epochs, 
+                 runs_pr_epoch=runs_pr_epoch,
+                 cb=cb)
+bestKernel, bestl, KP, u0s = learnKernel(LK; reset_u0s=false)
+
+####
+# Updating LK with new KP just construct a new LK above.
+####
+
+
+############################################################################
+#    Testing optimized kernel
+############################################################################
 bestKP = KernelCLFieldTheory.KernelProblem(M, kernel=bestKernel)
-@time sol = run_simulation(bestKP,RS_val);
+@time sol = run_simulation(bestKP,RS_test; u0=u0s);
 
-plotSKContour(KP,sol)
-```
-
-Now we can use the optimal kernel and run once more with a higher statistics
-```julia
-RS_val2 = RunSetup(NTr=1, tspan=5000, saveat=0.01, dt=1e-4, dtmax=1e-3, adaptive=true)
-@time sol = run_simulation(bestKP,RS_val2);
 plotSKContour(bestKP,sol)
+plotFWContour(bestKP,sol)
+
+
+############################################################################
+#    Plot the loss history
+############################################################################
+plot(lhistory_train[:L],label="L", yaxis=:log)
+plot(lhistory_train[:LSym],label="LSym", yaxis=:log)
+
+plot(lhistory_val[:L],label="L", yaxis=:log)
+plot(lhistory_val[:LSym],label="LSym", yaxis=:log)
+
 ```
 
 
 # How to update the code
-
-At the moment the learnKernel function is hardcoded with values for the optimization. (Have not got time yet to update this)
-
-This is suppost to be the main loop of the optimizaiton process, can be tuned for different strategies. 
-
-
-The structure of the code is as follows:
-The model, including the contour, can be made by `ScalarField` or `ScalarField_from_at`. See the example of parameters. The contour is specified with, nothing extra: Canonical SK, Δβ = 0.5: split SK contour (Alexandru2016) and ΔE = 0.0 for tilted SK contour (or larger if also forward tilt). 
-
-The specific implementation of the discretized action is in the Implementations folder, where also the loss funciton is located.
-In this function it is possible to change the number of steps forward for each configuration when calculating the loss function (and its gradient).
-
-
 
 

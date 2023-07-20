@@ -23,11 +23,11 @@ function learnKernel(LK::LearnKernel; reset_u0s = false, val_seed=100)
 
     trun = @elapsed sol = run_simulation(KP,RS_val; seed=val_seed)
     
-    println(" ---------------------------- ")
+    println("  ")
     print(" ---------- INITIAL: ")
     l = cb(sol, KP; type="val", show_plot=true, verbose=true)
     println("\t\t(time_run: ", round(trun,digits=2))
-    println(" ---------------------------- ")
+    println("  ")
 
     bestKernel = deepcopy(KP.kernel)
     bestL = l
@@ -35,7 +35,7 @@ function learnKernel(LK::LearnKernel; reset_u0s = false, val_seed=100)
     u0s = [tr[:,end] for tr in sol]
 
     for i in 1:epochs
-        println(" :::::::::::: EPOCH ", i, " :::::::::::: ")
+        println(" ---------- EPOCH ", i, " ---------- ")
         for j in 1:runs_pr_epoch
             trun = @elapsed sol = run_simulation(KP, RS; u0=u0s)#, seed=100)
             
@@ -49,12 +49,12 @@ function learnKernel(LK::LearnKernel; reset_u0s = false, val_seed=100)
                 KP = updateProblem(KP)
 
                 #LD = mean(calcIMXLoss(sol[tr],KP) for tr in eachindex(sol))
-                print("EPOCH ", i, ", BATCH: ", j, ".", k," ------") #, LDrift=", round(LD,digits=5), "\t (time_grad: ", round(tdL,digits=2), ")")
+                print("EPOCH ", i, ", BATCH: ", j, ".", k," ::::: ") #, LDrift=", round(LD,digits=5), "\t (time_grad: ", round(tdL,digits=2), ")")
 
                 cb(sol, KP; type="train", show_plot=false, verbose=true)
             end
             tdL = tdL/n_gradient_pr_run
-            println("\t\t(time_grad: ", round(tdL,digits=2), ")", "(time_run: ", round(trun,digits=2),")")
+            println("\t\t(time_grad: ", round(tdL,digits=2), ")", "(time_run_train: ", round(trun,digits=2),")")
 
             u0s = [tr[:,end] for tr in sol]
         end
@@ -64,11 +64,11 @@ function learnKernel(LK::LearnKernel; reset_u0s = false, val_seed=100)
         end
 
         trun = @elapsed sol = run_simulation(KP,RS_val;u0=u0s,seed=val_seed)
-        println(" ---------------------------- ")
+        println(" ")
         print(" VALIDATION: ")
         l = cb(sol, KP; type="val", show_plot=true, verbose=true)
-        println("\t\t(time_run: ", round(trun,digits=2), ")")
-        println(" ---------------------------- ")
+        println("\t\t(time_run_val: ", round(trun,digits=2), ")")
+        println(" ")
         if l < bestL
             bestL = l
             bestKernel = deepcopy(KP.kernel)
