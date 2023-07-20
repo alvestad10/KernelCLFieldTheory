@@ -158,7 +158,6 @@ end
 
 
 
-
 """
     Calculate the drift loss used to update approximate the gradient
 """
@@ -166,44 +165,27 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{3}}; H = KP.kernel.H)
 
     @unpack m, λ, contour, n_steps, as = KP.model
     @unpack a, t_steps = contour
-
-
-    dt = 1e-5
-    κ = 1e-2*im
     
 
-    gm1=vcat([t_steps],1:t_steps-1)
-    gp1=vcat(2:t_steps,[1])
+    gtm1=vcat([t_steps],1:t_steps-1)
+    gtp1=vcat(2:t_steps,[1])
 
     gsm1=vcat([n_steps],1:n_steps-1)
     gsp1=vcat(2:n_steps,[1])
-    
-    a_m1 = a[gm1]
-    as_prefac_re = 1 / (as^2)
-    as_prefac_im = 1/ (as^2) 
 
-    one_over_a = (a.- κ).^(-1)
-    one_over_a_Re = real(one_over_a) #hcat([real(one_over_a) for i in 1:n_steps]...)
-    one_over_a_Im = (imag(one_over_a)) #hcat([imag(one_over_a) for i in 1:n_steps]...)
-    one_over_a_m1 = (a_m1 .- κ).^(-1)
-    one_over_a_m1_Re = real(one_over_a_m1) #hcat([real(one_over_a_m1) for i in 1:n_steps]...)
-    one_over_a_m1_Im = (imag(one_over_a_m1)) #hcat([imag(one_over_a_m1) for i in 1:n_steps]...)
     
-    V_pre_fac = (a + a_m1)/2
-    V_pre_fac_Re = real(V_pre_fac) #hcat([real(V_pre_fac) for i in 1:n_steps]...)
-    V_pre_fac_Im = imag(V_pre_fac) #hcat([imag(V_pre_fac) for i in 1:n_steps]...)
-
-    pre_fac = (1. / abs(a[1]))
+    a_m1 = a[gtm1]
+    as_prefac = 1 / (as^2) 
+    
+    pre_fac = (as^3 / abs(a[1]))
     
     KRe,KIm = getK(H)
     KC = KRe .+ im*KIm
     
     im_pre_fac_KC = KC*im*pre_fac
 
-    
-
-    ARe = zeros(t_steps,n_steps,n_steps,n_steps)
-    AIm = zeros(t_steps,n_steps,n_steps,n_steps)
+    dt = 1e-5
+    κ = im*1e-2
 
     g(u) = begin
 
@@ -212,106 +194,50 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{3}}; H = KP.kernel.H)
         
         uRe = reshape(_uRe,t_steps,n_steps,n_steps,n_steps)
         uIm = reshape(_uIm,t_steps,n_steps,n_steps,n_steps)
-
+        
         _x = uRe + im * uIm
-        for i in 1:1
+        _xtm1 = @view _x[gtm1,:,:]
+        _xtp1 = @view _x[gtp1,:,:]
+        _xs1m1 = @view _x[:,gsm1,:,:]
+        _xs1p1 = @view _x[:,gsp1,:,:]
+        _xs2m1 = @view _x[:,:,gsm1,:]
+        _xs2p1 = @view _x[:,:,gsp1,:]
+        _xs3m1 = @view _x[:,:,:,gsm1]
+        _xs3p1 = @view _x[:,:,:,gsp1]
 
-            _ARe = Zygote.Buffer(ARe)
-            _AIm = Zygote.Buffer(AIm)
+        for i in 1:3
 
-            uRe = real(_x)
-            uIm = imag(_x)
-
-            #uRe = @view _u[1:t_steps,:]
-            uRetm1 = @view uRe[gm1,:,:,:]
-            uRetp1 = @view uRe[gp1,:,:,:]
-            uRes1m1 = @view uRe[1:t_steps,gsm1,:,:]
-            uRes1p1 = @view uRe[1:t_steps,gsp1,:,:]
-            uRes2m1 = @view uRe[1:t_steps,:,gsm1,:]
-            uRes2p1 = @view uRe[1:t_steps,:,gsp1,:]
-            uRes3m1 = @view uRe[1:t_steps,:,:,gsm1]
-            uRes3p1 = @view uRe[1:t_steps,:,:,gsp1]
-            
-            #uIm = @view _u[t_steps+1:end,:]
-            uImtm1 = @view uIm[gm1,:,:,:]
-            uImtp1 = @view uIm[gp1,:,:,:]
-            uIms1m1 = @view uIm[1:t_steps,gsm1,:,:]
-            uIms1p1 = @view uIm[1:t_steps,gsp1,:,:]
-            uIms2m1 = @view uIm[1:t_steps,:,gsm1,:]
-            uIms2p1 = @view uIm[1:t_steps,:,gsp1,:]
-            uIms3m1 = @view uIm[1:t_steps,:,:,gsm1]
-            uIms3p1 = @view uIm[1:t_steps,:,:,gsp1]
-
-            VRe = @. m * uRe + (λ/6) * (uRe^3 - 3*uRe*uIm^2)
-            VIm = @. m * uIm - (λ/6) * (uIm^3 - 3*uIm*uRe^2)
-
-            @inbounds for I in CartesianIndices((t_steps,n_steps,n_steps,n_steps))
-                i,j,k,l = Tuple(I)
-                _ARe[i,j,k,l] = - as^3 * pre_fac * (
-                        (uRe[i,j,k,l] - uRetm1[i,j,k,l])*one_over_a_m1_Im[i]
-                    + (uIm[i,j,k,l] - uImtm1[i,j,k,l])*one_over_a_m1_Re[i]  
-                    + (uRe[i,j,k,l] - uRetp1[i,j,k,l])*one_over_a_Im[i] 
-                    + (uIm[i,j,k,l] - uImtp1[i,j,k,l])*one_over_a_Re[i]
-    
-                    - V_pre_fac_Im[i] * ( (2uRe[i,j,k,l] - uRes1m1[i,j,k,l] - uRes1p1[i,j,k,l])*as_prefac_im + 
-                                            (2uRe[i,j,k,l] - uRes2m1[i,j,k,l] - uRes2p1[i,j,k,l])*as_prefac_im +
-                                            (2uRe[i,j,k,l] - uRes3m1[i,j,k,l] - uRes3p1[i,j,k,l])*as_prefac_im +
-                                            VRe[i,j,k,l])
-                    - V_pre_fac_Re[i] * ( (2uIm[i,j,k,l] - uIms1m1[i,j,k,l] - uIms1p1[i,j,k,l])*as_prefac_re + 
-                                            (2uIm[i,j,k,l] - uIms2m1[i,j,k,l] - uIms2p1[i,j,k,l])*as_prefac_re +
-                                            (2uIm[i,j,k,l] - uIms3m1[i,j,k,l] - uIms3p1[i,j,k,l])*as_prefac_re +
-                                            VIm[i,j,k,l])
-                    )
-                
-                _AIm[i,j,k,l] = as^3 * pre_fac * (
-                        (uRe[i,j,k,l] - uRetm1[i,j,k,l])*one_over_a_m1_Re[i] 
-                    - (uIm[i,j,k,l] - uImtm1[i,j,k,l])*one_over_a_m1_Im[i]  
-                    + (uRe[i,j,k,l] - uRetp1[i,j,k,l])*one_over_a_Re[i] 
-                    - (uIm[i,j,k,l] - uImtp1[i,j,k,l])*one_over_a_Im[i]
-            
-                    - V_pre_fac_Re[i] * ( (2uRe[i,j,k,l] - uRes1m1[i,j,k,l] - uRes1p1[i,j,k,l])*as_prefac_re + 
-                                            (2uRe[i,j,k,l] - uRes2m1[i,j,k,l] - uRes2p1[i,j,k,l])*as_prefac_re +  
-                                            (2uRe[i,j,k,l] - uRes3m1[i,j,k,l] - uRes3p1[i,j,k,l])*as_prefac_re +    
-                                            VRe[i,j,k,l])
-                    + V_pre_fac_Im[i] * ( (2uIm[i,j,k,l] - uIms1m1[i,j,k,l] - uIms1p1[i,j,k,l])*as_prefac_im +
-                                            (2uIm[i,j,k,l] - uIms2m1[i,j,k,l] - uIms2p1[i,j,k,l])*as_prefac_im + 
-                                            (2uIm[i,j,k,l] - uIms3m1[i,j,k,l] - uIms3p1[i,j,k,l])*as_prefac_im + 
-                                        VIm[i,j,k,l])
-                    )
-                    #end
-                #end
-            end
-            _A_tmp = copy(_ARe) + im*copy(_AIm)
-
-            # _A_tmp =    @. ((_x - _x[gtm1,:]) / (a_m1 .- κ) + (_x - _x[gtp1,:]) / (a .- κ)  - 
-            #                 (a + a_m1)/2 * ( (2*_x - _x[:,gsm1] - _x[:,gsp1]) * as_prefac 
-            #                     +  (m * _x + (λ/6) * _x^3)))
+            @tullio _A_tmp[i,j,k] := ((_x[i,j,k,l] - _xtm1[i,j,k,l]) / (a_m1[i] - κ) + (_x[i,j,k,l] - _xtp1[i,j,k,l]) / (a[i] - κ)  - 
+                            (a[i] + a_m1[i])/2 * ( (2*_x[i,j,k,l] - _xs1m1[i,j,k,l] - _xs1p1[i,j,k,l]) * as_prefac +
+                                                    (2*_x[i,j,k,l] - _xs2m1[i,j,k] - _xs2p1[i,j,k,l]) * as_prefac +
+                                                    (2*_x[i,j,k,l] - _xs3m1[i,j,k,l] - _xs3p1[i,j,k,l]) * as_prefac  
+                                +  (m * _x[i,j,k,l] + (λ/6) * _x[i,j,k,l]^3)))
 
             _A = im_pre_fac_KC * vec(_A_tmp)
 
             _x += reshape(_A * dt,t_steps,n_steps,n_steps,n_steps)
         end
 
-        return _x
-        #return sum(imag(_x).^2) + sum(real(_x).^2)
+        
+        #return _x
+        return sum(imag(_x).^2) # + sum(real(_x).^2)
 
     end
-    XX = [g(u) for u in eachrow(sol_tr')]
-    XP0 = [mean(X) for X in XX]
 
-    xRe = abs2.(StatsBase.mean([real(_x) for _x in XP0]) )
-    xIm = abs2.(StatsBase.mean([imag(_x) for _x in XP0]) )
+    # XX = [g(u) for u in eachrow(sol_tr')]
 
-    x2Re = abs2.(StatsBase.mean([real(_x)^2 - imag(_x)^2 for _x in XP0]) - KP.y["phi2Re"])
-    x2Im = abs2.(StatsBase.mean([2 * real(_x) * imag(_x) for _x in XP0]) - KP.y["phi2Im"])
+    # xRe = sum( abs2.(StatsBase.mean([real(_x) for _x in XX]) ) )
+    # xIm = sum( abs2.(StatsBase.mean([imag(_x) for _x in XX]) ) )
 
-    imx = sum( abs.(StatsBase.mean([imag(_x).^2 + real(_x).^2 for _x in XX])) )
-   
-    return xRe + xIm + 10*x2Re + x2Im + imx
+    # x2Re = sum( abs2.(StatsBase.mean([real(_x).^2 .- imag(_x).^2 for _x in XX]) .- KP.y["phi2Re"]) )
+    # x2Im = sum( abs2.(StatsBase.mean([2 .* real(_x) .* imag(_x) for _x in XX]) .- KP.y["phi2Im"]) )
 
-    # return sum(
-    #     mean(g(u) for u in eachrow(sol_tr'))
-    #     )
+    # imx = sum( abs.(StatsBase.mean([imag(_x).^2 + real(_x).^2 for _x in XX])) )
+
+    # return xRe + xIm + 5*x2Re + x2Im + imx
+    return sum(
+        mean(g(u) for u in eachrow(sol_tr'))
+        )
 
 end
 
