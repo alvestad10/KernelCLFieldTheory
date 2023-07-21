@@ -15,13 +15,13 @@ function LearnKernel(KP::KernelProblem, RS::RunSetup; RS_val::RunSetup=RS, opt=A
     return LearnKernel(KP,RS,RS_val,opt,epochs, runs_pr_epoch, n_gradient_pr_run,cb)
 end
 
-function learnKernel(LK::LearnKernel; reset_u0s = false, val_seed=100)
+function learnKernel(LK::LearnKernel; reset_u0s = false, val_seed=100, u0s=nothing)
 
 
     @unpack KP, RS, RS_val, epochs, runs_pr_epoch, n_gradient_pr_run, cb, opt = LK
     @unpack kernel = KP
 
-    trun = @elapsed sol = run_simulation(KP,RS_val; seed=val_seed)
+    trun = @elapsed sol = run_simulation(KP,RS_val; seed=val_seed, u0s)
     
     println("  ")
     print(" ---------- INITIAL: ")
