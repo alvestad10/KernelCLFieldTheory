@@ -19,9 +19,8 @@ function learnKernel(LK::LearnKernel; reset_u0s = false, val_seed=100, u0s=nothi
 
 
     @unpack KP, RS, RS_val, epochs, runs_pr_epoch, n_gradient_pr_run, cb, opt = LK
-    @unpack kernel = KP
 
-    trun = @elapsed sol = run_simulation(KP,RS_val; seed=val_seed, u0s)
+    trun = @elapsed sol = run_simulation(KP,RS_val; seed=val_seed, u0=u0s)
     
     println("  ")
     print(" ---------- INITIAL: ")
@@ -48,8 +47,7 @@ function learnKernel(LK::LearnKernel; reset_u0s = false, val_seed=100, u0s=nothi
                 # Updating the drift and noise term with the new kernel
                 KP = updateProblem(KP)
 
-                #LD = mean(calcIMXLoss(sol[tr],KP) for tr in eachindex(sol))
-                print("EPOCH ", i, ", BATCH: ", j, ".", k," ::::: ") #, LDrift=", round(LD,digits=5), "\t (time_grad: ", round(tdL,digits=2), ")")
+                print("EPOCH ", i, ", BATCH: ", j, ".", k," ::::: ")
 
                 cb(sol, KP; type="train", show_plot=false, verbose=true)
             end
