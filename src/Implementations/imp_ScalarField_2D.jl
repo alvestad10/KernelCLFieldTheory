@@ -232,7 +232,7 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{2}}; H = KP.kernel.H)
     end
 
     XX = [g(u) for u in eachrow(sol_tr')]
-    XP0 = [mean(X,dims=2) for X in XX]
+    XP0 = [mean(X,dims=(2,3)) for X in XX]
 
     xRe = sum( abs2.(StatsBase.mean([real(X) for X in XP0]) ) )
     xIm = sum( abs2.(StatsBase.mean([imag(X) for X in XP0]) ) )
