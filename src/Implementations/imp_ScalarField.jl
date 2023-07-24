@@ -40,7 +40,7 @@ function calc_obs(KP::KernelProblem{ScalarField{D}},sol;onlyCorr=false, max_inx 
         
         _uu = zeros(2t_steps,size(_u)[2])
 
-        @inbounds for i in 1:n_steps^(D-1 > 0 ? 1 : 0)
+        @inbounds for i in 1:n_steps^(D > 0 ? 1 : 0)
                   for j in 1:n_steps^(D-1 > 0 ? 1 : 0)
                   for k in 1:n_steps^(D-2 > 0 ? 1 : 0)
                     _uu[1:t_steps,:] .+= @view _uRe[(k-1)*t_steps*n_steps^2 + (j-1)*t_steps*n_steps + (i-1)*t_steps .+ (1:t_steps),:]
