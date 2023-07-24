@@ -110,26 +110,6 @@ struct SKContour
 end
 
 
-"""
-    Anhamronic Oscillator model with the potential (1/2)mx^2 + (1/24)λx^4
-
-    Containes the integration contour
-"""
-struct AHO <: ScalarTheory{1}
-    m::Float64
-    λ::Float64
-    contour::SKContour
-
-    function AHO(m::Float64,λ::Float64,RT::Float64,β::Float64,steps_pr_length::Integer;kwargs...)
-        contour = SKContour(RT,β,steps_pr_length;kwargs...)
-        new(m,λ,contour)
-    end
-end
-
-function AHO(;m=1.,λ=24.,RT=1.0,β=1.0,steps_pr_length=10,kwargs...)
-    return AHO(m,λ,RT,β,steps_pr_length;kwargs...)
-end
-
 
 
 """
@@ -146,6 +126,10 @@ struct ScalarField{D} <: ScalarTheory{D}
 
 
     function ScalarField{D}(m::Float64,λ::Float64,RT::Float64,β::Float64,steps_pr_length::Integer,n_steps::Integer,as::Float64;kwargs...) where {D}
+        if D == 0
+            n_steps = 1.
+            as = 0.
+        end
         contour = SKContour(RT,β,steps_pr_length;kwargs...)
         new{D}(m,λ,contour,n_steps,as)
     end
@@ -172,6 +156,13 @@ function get_noise_rate_prototype(model::ScalarField{D},T::Type = Float64) where
     t_steps = model.contour.t_steps
     n_steps = model.n_steps
     return zeros(T,2*t_steps * n_steps^D, t_steps * n_steps^D)
+end
+
+function get_caches(model::ScalarField{0},T::Type = Float64)
+    t_steps = model.contour.t_steps
+
+    tmp = zeros(T,8t_steps)
+    return dualcache(tmp)
 end
 
 function get_caches(model::ScalarField{1},T::Type = Float64)

@@ -37,19 +37,23 @@ function learnKernel(LK::LearnKernel; reset_u0s = false, val_seed=100, u0s=nothi
         println(" ---------- EPOCH ", i, " ---------- ")
         for j in 1:runs_pr_epoch
             trun = @elapsed sol = run_simulation(KP, RS; u0=u0s)#, seed=100)
+            print("EPOCH ", i, ", BATCH: ", j, ".",)
             
             tdL = 0.
             for k in 1:n_gradient_pr_run
-
+                print(" ",k)
                 tdL += @elapsed dHs = getdH_imx(sol,KP)
                 Flux.update!(opt, KP.kernel.H, dHs)
 
                 # Updating the drift and noise term with the new kernel
                 KP = updateProblem(KP)
 
-                print("EPOCH ", i, ", BATCH: ", j, ".", k," ::::: ")
-
-                cb(sol, KP; type="train", show_plot=false, verbose=true)
+                
+                
+                if k == n_gradient_pr_run
+                    print(" ::::: ")
+                    cb(sol, KP; type="train", show_plot=false, verbose=true)
+                end
             end
             tdL = tdL/n_gradient_pr_run
             println("\t\t(time_grad: ", round(tdL,digits=2), ")", "(time_run_train: ", round(trun,digits=2),")")

@@ -1,5 +1,6 @@
 export getSolutions
 
+include("ScrodingerSol.jl")
 
 function getSolutions(model::ScalarTheory{D}) where {D}
     @unpack n_steps = model

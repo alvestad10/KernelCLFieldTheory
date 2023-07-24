@@ -24,6 +24,22 @@ function getK(kernel::MatrixKernel)
     return getK(kernel.H)
 end
 
+function MatrixKernel(M::ScalarField{0})
+    @unpack n_steps = M 
+    @unpack t_steps = M.contour 
+
+    _HRe = zeros(t_steps,t_steps)
+    for i in 1:t_steps
+            _HRe[i,i] = 1.
+    end
+
+
+    H = vcat(reshape(_HRe,t_steps,t_steps),
+             zeros(t_steps,t_steps))
+    
+    return MatrixKernel(H)
+end
+
 function MatrixKernel(M::ScalarField{1})
     @unpack n_steps = M 
     @unpack t_steps = M.contour 
