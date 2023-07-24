@@ -1,4 +1,4 @@
-export setKernel!
+export setKernel!, MatrixKernel
 
 abstract type Kernel end
 

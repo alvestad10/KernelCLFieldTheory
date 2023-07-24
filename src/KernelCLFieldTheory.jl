@@ -9,6 +9,7 @@ using StochasticDiffEq
 using Flux
 using Zygote
 using Tullio
+using SparseArrays
 
 using Logging: global_logger
 using TerminalLoggers: TerminalLogger
@@ -17,6 +18,7 @@ using Bootstrap
 using Plots
 using LaTeXStrings
 using Measurements
+using JLD2
 
 USE_GPU = false
 function use_GPU(_use_GPU::Bool)
@@ -34,6 +36,7 @@ include("RunSetup.jl")
 include("LearnKernel.jl")
 
 include("Implementations/imp_ScalarField.jl")
+include("Implementations/imp_ScalarField_0D.jl")
 include("Implementations/imp_ScalarField_1D.jl")
 include("Implementations/imp_ScalarField_2D.jl")
 include("Implementations/imp_ScalarField_3D.jl")
