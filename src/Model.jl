@@ -125,7 +125,7 @@ struct ScalarField{D} <: ScalarTheory{D}
     as::Float64
 
 
-    function ScalarField{D}(m::Float64,λ::Float64,RT::Float64,β::Float64,steps_pr_length::Integer,n_steps::Integer,as::Float64;kwargs...) where {D}
+    function ScalarField{D}(m::Float64,λ::Float64,RT::Float64,β::Float64,steps_pr_length::Integer,n_steps::Integer=1,as::Float64=0;kwargs...) where {D}
         if D == 0
             n_steps = 1.
             as = 0.
