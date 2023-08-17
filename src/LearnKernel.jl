@@ -31,9 +31,9 @@ function learnKernel(LK::LearnKernel; reset_u0s = false, val_seed=100, u0s=nothi
     bestKernel = deepcopy(KP.kernel)
     bestL = l
 
-    u0s = [tr[:,end] for tr in sol]
-
+    
     for i in 1:epochs
+        u0s = [tr[:,end] for tr in sol]
         println(" ---------- EPOCH ", i, " ---------- ")
         for j in 1:runs_pr_epoch
             trun = @elapsed sol = run_simulation(KP, RS; u0=u0s)#, seed=100)

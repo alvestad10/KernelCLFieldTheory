@@ -128,10 +128,10 @@ function calc_obs(KP::KernelProblem{ScalarField{D}},sol;onlyCorr=false, max_inx 
         corr0tRe = zeros(T,length(sol),t_steps)
         corr0tIm = zeros(T,length(sol),t_steps)
 
-        X = Array(sol)
+        X = [Array(tr) for tr in sol]
 
         for i in eachindex(sol)
-            _u = @view X[:,:,i]
+            _u = X[i]
             _uRe = @view _u[1:t_steps*n_steps^D,:]
             _uIm = @view _u[t_steps*n_steps^D + 1:end,:]
             

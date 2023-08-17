@@ -1,5 +1,6 @@
 using KernelCLFieldTheory
 using LinearAlgebra, Statistics
+using Plots
 
 
 M = ScalarField_from_at(D=1,m=1.0,λ=1.0,RT=1.6,β=0.4,at=0.2,n_steps=8,as=0.2,
@@ -19,21 +20,23 @@ KP = KernelCLFieldTheory.KernelProblem(M);
 #    Note: The termalization is removed is u0 initialized from end of 
 #    previous run
 ############################################################################
-RS_train = RunSetup(tspan=20, 
+scheme = ImplicitEM()
+RS_train = RunSetup(tspan=20,
+                    saveat=0.001,
                     tspan_thermalization=1000,  
-                    scheme=LambaEM()
+                    scheme=scheme
 )
 
 # The validation setup
-RS_val = RunSetup(tspan=100, 
+RS_val = RunSetup(tspan=200, 
                     tspan_thermalization=1000, 
-                    scheme=LambaEM()
+                    scheme=scheme
 )
 
 # The testing setup
-RS_test = RunSetup(tspan=5000, 
+RS_test = RunSetup(tspan=3000, 
                     tspan_thermalization=1000, 
-                    scheme=LambaEM()
+                    scheme=scheme
 )
 
 
@@ -41,8 +44,9 @@ RS_test = RunSetup(tspan=5000,
 #    Kernel Optimization setup
 ############################################################################
 opt = ADAM(0.001, (0.5, 0.9))
-epochs = 5
-runs_pr_epoch = 5
+epochs = 20
+runs_pr_epoch = 10
+n_gradient_pr_run = 3
 
 
 
@@ -101,18 +105,20 @@ LK = LearnKernel(KP,RS_train;RS_val=RS_val,
                  opt=opt, epochs=epochs, 
                  runs_pr_epoch=runs_pr_epoch,
                  cb=cb)
-bestKernel, bestl, KP, u0s = learnKernel(LK; reset_u0s=false)
-
-####
-# Updating LK with new KP just construct a new LK above.
-####
-
+bestKernel, bestl, KP, u0s = learnKernel(LK; reset_u0s=true)
 
 ############################################################################
 #    Testing optimized kernel
 ############################################################################
-bestKP = KernelCLFieldTheory.KernelProblem(M, kernel=bestKernel)
+bestKP = KernelCLFieldTheory.KernelProblem(M, kernel=bestKernel);
 @time sol = run_simulation(bestKP,RS_test; u0=u0s);
+
+plotSKContour(bestKP,sol)
+plotFWContour(bestKP,sol)
+
+
+
+@time sol = run_simulation(bestKP,RS_test);
 
 plotSKContour(bestKP,sol)
 plotFWContour(bestKP,sol)
@@ -126,3 +132,39 @@ plot(lhistory_train[:LSym],label="LSym", yaxis=:log)
 
 plot(lhistory_val[:L],label="L", yaxis=:log)
 plot(lhistory_val[:LSym],label="LSym", yaxis=:log)
+
+
+
+
+############################################################################
+#    Calculating BT
+############################################################################
+RS_BT = RunSetup(tspan=5000, 
+                    tspan_thermalization=1000, 
+                    scheme=ImplicitEM(), NTr = 10,
+                    dtmax=1e-3
+)
+
+@time sol = run_simulation(KP,RS_BT);
+
+plotSKContour(KP,sol)
+plotFWContour(KP,sol)
+
+BT = getBoundaryTerms(KP;Ys=collect(0:1:150))#,Xs=collect(0:0.1:8))
+
+B1, B2 = calcBoundaryTerms(sol,BT;T=Float64, witherror=true,box=true)
+
+begin
+    observables = ["xRe", "xIm", "x2Re", "x2Im", "corr0tRe", "corr0tIm"]
+    t_steps = KP.model.contour.t_steps
+
+    fig = plot()
+    for i in eachindex(observables)
+        if i < 3
+            continue
+        end
+        _BT_mean = vec(mean(B1[(i-1)*t_steps .+ (1:t_steps),:],dims=1))
+        plot!(fig,_BT_mean, label=observables[i])
+    end
+    fig
+end

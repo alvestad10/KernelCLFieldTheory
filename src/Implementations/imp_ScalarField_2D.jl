@@ -10,6 +10,13 @@ function get_ab(model::ScalarField{2},kernel::MatrixKernel{T}) where {T <: Real}
 
     KRe, KIm = getK(kernel)
 
+    CUDA.allowscalar(false)
+    use_GPU = true
+    if use_GPU
+        KRe = CuArray(KRe)
+        KIm = CuArray(KIm)
+    end
+
     gm1=vcat([t_steps],1:t_steps-1)
     gp1=vcat(2:t_steps,[1])
 
@@ -114,6 +121,11 @@ function get_ab(model::ScalarField{2},kernel::MatrixKernel{T}) where {T <: Real}
         if isIdentity
             du[1:t_steps*n_steps^2,:] .= vec(ARe)
             du[t_steps*n_steps^2 + 1:end,:] .= vec(AIm)
+        elseif use_GPU
+            _ARe = CuArray(vec(ARe))
+            _AIm = CuArray(vec(AIm))
+            copyto!(du[1:t_steps*n_steps^2,:],KRe*_ARe - KIm*_AIm)
+            copyto!(du[t_steps*n_steps^2 + 1:end,:],KIm*_ARe + KRe*_AIm)
         else
             _ARe = vec(ARe)
             _AIm = vec(AIm)

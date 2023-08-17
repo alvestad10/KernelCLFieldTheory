@@ -1,9 +1,12 @@
 export plotSKContour, plotFWContour
+export plot_setup, markers_dict, solution_line_dict
+
+using Plots.PlotMeasures
 
 default(palette = palette(:default))
 
 M_SIZE = 4.0
-SOL_LW = 1.0
+SOL_LW = 2.0
 
 plot_setup() = plot_setup(:bottomright)
 
@@ -11,20 +14,22 @@ plot_setup(legend) = Dict(:legend     =>  legend,
                         :grid       => false,
                         :foreground_color_legend=> nothing,
                         :background_color_legend=> nothing,
-                        #:bottom_margin => -2mm,
-                        #:left_margin => -3mm,
+                        :bottom_margin => -2mm,
+                        :left_margin => -3mm,
                         :framestyle => :box,
-                        :thickness_scaling => 1.3)
+                        :thickness_scaling => 1.6)
 
-markers_dict(color,markershape) = Dict(
-                        :color => color,
+markers_dict(color,markershape; hollow=false) = Dict(
+                        :color => hollow ? 0 : color,
                         :markershape => markershape,
                         :markersize  => M_SIZE,
-                        :markerstrokecolor => color)#,
+                        :markerstrokecolor => color
+                        )#,
                         #:lw => false)
 
 markers_dict(color) = markers_dict(color,:square) 
 
+solution_line_dict(color,linestyle) = Dict(:color => color,:lw => SOL_LW, :linestyle => linestyle)
 solution_line_dict(color) = Dict(:color => color,:lw => SOL_LW)
 solution_line_dict() = solution_line_dict("black")
 
@@ -120,8 +125,8 @@ function plotFWContour(KP::KernelProblem,sol;obs=nothing)
     end
 
     if "corr0tRe" in keys(KP.y)
-        plot!(fig,tp,KP.y["corr0tRe"],label=false;solution_line_dict()...)
-        plot!(fig,tp,KP.y["corr0tIm"],label=false;solution_line_dict()...)
+        plot!(fig,tp,KP.y["corr0tRe"][1:maxinx],label=false;solution_line_dict()...)
+        plot!(fig,tp,KP.y["corr0tIm"][1:maxinx],label=false;solution_line_dict()...)
     end
 
     if "thimble_grady" in keys(KP.y)

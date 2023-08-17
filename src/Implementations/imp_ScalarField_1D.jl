@@ -10,6 +10,13 @@ function get_ab(model::ScalarField{1},kernel::MatrixKernel{T}) where {T <: Real}
 
     KRe, KIm = getK(kernel)
 
+    use_GPU = false
+    if use_GPU
+        KRe = CuArray(KRe)
+        KIm = CuArray(KIm)
+    end
+    
+
     gm1=vcat([t_steps],1:t_steps-1)
     gp1=vcat(2:t_steps,[1])
 
@@ -74,7 +81,7 @@ function get_ab(model::ScalarField{1},kernel::MatrixKernel{T}) where {T <: Real}
         @. VIm = m * uIm - (λ/6) * (uIm^3 - 3*uIm*uRe^2)
  
 
-        @inbounds @fastmath for I in CartesianIndices((t_steps,n_steps))
+        @inbounds for I in CartesianIndices((t_steps,n_steps))
             i,j = Tuple(I)
             ARe[i,j] = - as * pre_fac * (
                     (uRe[i,j] - uRetm1[i,j])*one_over_a_m1_Im[i]
@@ -104,6 +111,12 @@ function get_ab(model::ScalarField{1},kernel::MatrixKernel{T}) where {T <: Real}
         if isIdentity
             du[1:t_steps*n_steps,:] .= vec(ARe)
             du[t_steps*n_steps + 1:end,:] .= vec(AIm)
+        elseif use_GPU
+            _ARe = CuArray(vec(ARe))
+            _AIm = CuArray(vec(AIm))
+            
+            copyto!(du[1:t_steps*n_steps,:],KRe*_ARe - KIm*_AIm)
+            copyto!(du[t_steps*n_steps + 1:end,:],KIm*_ARe + KRe*_AIm)
         else
             _ARe = vec(ARe)
             _AIm = vec(AIm)
@@ -209,7 +222,7 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{1}}; H = KP.kernel.H)
         _xsm1 = @view _x[:,gsm1]
         _xsp1 = @view _x[:,gsp1]
 
-        for i in 1:1
+        for i in 1:5
 
             @tullio _A_tmp[i,j] := ((_x[i,j] - _xtm1[i,j]) * one_over_am1[i]  + (_x[i,j] - _xtp1[i,j]) * one_over_a[i]  - 
                     a_ap1_fac[i] * ( (2*_x[i,j] - _xsm1[i,j] - _xsp1[i,j]) * as_prefac 
@@ -227,19 +240,19 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{1}}; H = KP.kernel.H)
     end
 
     XX = [g(u) for u in eachrow(sol_tr')]
-    XP0 = [mean(X,dims=2) for X in XX]
+    # XP0 = [mean(X,dims=2) for X in XX]
 
-    xRe = sum( abs2.(StatsBase.mean([real(X) for X in XP0]) ) )
-    xIm = sum( abs2.(StatsBase.mean([imag(X) for X in XP0]) ) )
+    # xRe = sum( abs2.(StatsBase.mean([real(X) for X in XP0]) ) )
+    # xIm = sum( abs2.(StatsBase.mean([imag(X) for X in XP0]) ) )
 
-    x2Re = sum( abs2.(StatsBase.mean([real(X).^2 .- imag(X).^2 for X in XP0]) .- KP.y["phi2Re"]) )
-    x2Im = sum( abs2.(StatsBase.mean([2 .* real(X) .* imag(X) for X in XP0]) .- KP.y["phi2Im"]) )
+    # x2Re = sum( abs2.(StatsBase.mean([real(X).^2 .- imag(X).^2 for X in XP0]) .- KP.y["phi2Re"]) )
+    # x2Im = sum( abs2.(StatsBase.mean([2 .* real(X) .* imag(X) for X in XP0]) .- KP.y["phi2Im"]) )
 
     imx = sum([maximum(imag(_x).^2) for _x in XX])
-    rex = sum([maximum(real(_x).^2) for _x in XX])
+    # rex = sum([maximum(real(_x).^2) for _x in XX])
 
-
-    return xRe + xIm + 5*x2Re + x2Im + imx + rex
+    return imx
+    # return xRe + xIm + 5*x2Re + x2Im + imx + rex
     # return sum(
     #     mean(g(u) for u in eachrow(sol_tr'))
     #     )

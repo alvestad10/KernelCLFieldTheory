@@ -20,12 +20,9 @@ using LaTeXStrings
 using Measurements
 using JLD2
 
-USE_GPU = false
-function use_GPU(_use_GPU::Bool)
-    global USE_GPU
-    USE_GPU = _use_GPU
-end
-export use_GPU
+
+CUDA.allowscalar(false)
+
 
 
 include("Model.jl")
@@ -34,6 +31,7 @@ include("Solutions.jl")
 include("KernelProblem.jl")
 include("RunSetup.jl")
 include("LearnKernel.jl")
+include("BoundaryTerms.jl")
 
 include("Implementations/imp_ScalarField.jl")
 include("Implementations/imp_ScalarField_0D.jl")
