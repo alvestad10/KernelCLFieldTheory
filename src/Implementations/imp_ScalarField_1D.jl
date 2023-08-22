@@ -2,13 +2,15 @@
 """
     Get the drift and noise term to be used in the simulation
 """
-function get_ab(model::ScalarField{1},kernel::MatrixKernel{T}) where {T <: Real}
+function get_ab(model::ScalarField{1},kernel::T) where {T <: ConstantKernel}
     
     @unpack m, λ, contour, n_steps, as = model
     @unpack a, t_steps = contour
     @unpack H = kernel
 
-    KRe, KIm = getK(kernel)
+    _KRe, _KIm = getK(kernel)
+    KRe = Matrix(_KRe)
+    KIm = Matrix(_KIm)
 
     use_GPU = false
     if use_GPU
@@ -124,6 +126,11 @@ function get_ab(model::ScalarField{1},kernel::MatrixKernel{T}) where {T <: Real}
             KImAIm .= KIm*_AIm
             KReAIm .= KRe*_AIm
             KImARe .= KIm*_ARe
+
+            # mul!(KReARe, KRe,_ARe)
+            # mul!(KImAIm, KIm,_AIm)
+            # mul!(KReAIm, KRe,_AIm)
+            # mul!(KImARe, KIm,_ARe)
             @. du[1:t_steps*n_steps,:] = KReARe - KImAIm
             @. du[t_steps*n_steps + 1:end,:] = KImARe + KReAIm
         end

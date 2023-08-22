@@ -37,7 +37,7 @@ function run_simulation(KP::KernelProblem, runSetup::RunSetup; seed=nothing, u0 
         tspan_thermalization = 0.01
     end
 
-    noise_rate_prototype = get_noise_rate_prototype(model,T)
+    noise_rate_prototype = kernel.H #get_noise_rate_prototype(model,T)
     caches = [get_caches(model, T) for _ in 1:NTr]
 
     function prob_func(prob,i,repeat)

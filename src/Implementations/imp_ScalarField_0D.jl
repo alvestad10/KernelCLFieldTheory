@@ -2,7 +2,7 @@
 """
     Get the drift and noise term to be used in the simulation
 """
-function get_ab(model::ScalarField{0},kernel::MatrixKernel{T}) where {T <: Real}
+function get_ab(model::ScalarField{0},kernel::T) where {T <: ConstantKernel}
     
     @unpack m, λ, contour = model
     @unpack a, t_steps = contour
@@ -203,17 +203,18 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{0}}; H = KP.kernel.H)
 
     XX = [g(u) for u in eachrow(sol_tr')]
 
-    xRe = sum( abs2.(StatsBase.mean([real(X) for X in XX]) ) )
-    xIm = sum( abs2.(StatsBase.mean([imag(X) for X in XX]) ) )
+    # xRe = sum( abs2.(StatsBase.mean([real(X) for X in XX]) ) )
+    # xIm = sum( abs2.(StatsBase.mean([imag(X) for X in XX]) ) )
     
-    x2Re = sum( abs2.(StatsBase.mean([real(X).^2 .- imag(X).^2 for X in XX]) .- KP.y["phi2Re"]) )
-    x2Im = sum( abs2.(StatsBase.mean([2 .* real(X) .* imag(X) for X in XX]) .- KP.y["phi2Im"]) )
+    # x2Re = sum( abs2.(StatsBase.mean([real(X).^2 .- imag(X).^2 for X in XX]) .- KP.y["phi2Re"]) )
+    # x2Im = sum( abs2.(StatsBase.mean([2 .* real(X) .* imag(X) for X in XX]) .- KP.y["phi2Im"]) )
 
     imx = sum([maximum(imag(_x).^2) for _x in XX])
-    rex = sum([maximum(real(_x).^2) for _x in XX])
+    # rex = sum([maximum(real(_x).^2) for _x in XX])
 
 
-    return xRe + xIm + 5*x2Re + x2Im + imx + rex
+    #return xRe + xIm + 5*x2Re + x2Im + imx + rex
+    return imx
     # return sum(
     #     mean(g(u) for u in eachrow(sol_tr'))
     #     )
