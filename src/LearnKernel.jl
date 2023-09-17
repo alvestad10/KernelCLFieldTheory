@@ -15,25 +15,32 @@ function LearnKernel(KP::KernelProblem, RS::RunSetup; RS_val::RunSetup=RS, opt=A
     return LearnKernel(KP,RS,RS_val,opt,epochs, runs_pr_epoch, n_gradient_pr_run,cb)
 end
 
-function learnKernel(LK::LearnKernel; reset_u0s = false, val_seed=100, u0s=nothing)
+function learnKernel(LK::LearnKernel; reset_u0s = false, val_seed=100, u0s=nothing, validation=true)
 
 
     @unpack KP, RS, RS_val, epochs, runs_pr_epoch, n_gradient_pr_run, cb, opt = LK
 
-    trun = @elapsed sol = run_simulation(KP,RS_val; seed=val_seed, u0=u0s)
-    
-    println("  ")
-    print(" ---------- INITIAL: ")
-    l = cb(sol, KP; type="val", show_plot=true, verbose=true)
-    println("\t\t(time_run: ", round(trun,digits=2))
-    println("  ")
-
-    bestKernel = deepcopy(KP.kernel)
-    bestL = l
+    if validation
+        trun = @elapsed sol = run_simulation(KP,RS_val; seed=val_seed, u0=u0s)
+        println("  ")
+        print(" ---------- INITIAL: ")
+        l = cb(sol, KP; type="val", show_plot=true, verbose=true)
+        println("\t\t(time_run: ", round(trun,digits=2))
+        println("  ")
+        bestL = l
+        bestKernel = deepcopy(KP.kernel)
+    else
+        bestL = 0.
+    end
 
     
     for i in 1:epochs
-        u0s = [tr[:,end] for tr in sol]
+
+        if validation
+            u0s = [tr[:,end] for tr in sol]
+        end
+
+        println(" ")
         println(" ---------- EPOCH ", i, " ---------- ")
         for j in 1:runs_pr_epoch
             trun = @elapsed sol = run_simulation(KP, RS; u0=u0s)#, seed=100)
@@ -61,21 +68,26 @@ function learnKernel(LK::LearnKernel; reset_u0s = false, val_seed=100, u0s=nothi
             u0s = [tr[:,end] for tr in sol]
         end
 
-        if reset_u0s
+        if reset_u0s || !validation
             u0s = nothing
         end
 
-        trun = @elapsed sol = run_simulation(KP,RS_val;u0=u0s,seed=val_seed)
-        println(" ")
-        print(" VALIDATION: ")
-        l = cb(sol, KP; type="val", show_plot=true, verbose=true)
-        println("\t\t(time_run_val: ", round(trun,digits=2), ")")
-        println(" ")
-        if l < bestL
-            bestL = l
-            bestKernel = deepcopy(KP.kernel)
+        if validation
+            trun = @elapsed sol = run_simulation(KP,RS_val;u0=u0s,seed=val_seed)
+            println(" ")
+            print(" VALIDATION: ")
+            l = cb(sol, KP; type="val", show_plot=true, verbose=true)
+            println("\t\t(time_run_val: ", round(trun,digits=2), ")")
+            if l < bestL
+                bestL = l
+                bestKernel = deepcopy(KP.kernel)
+            end
         end
     end
 
-    return bestKernel, bestL, KP, u0s
+    if validation
+        return bestKernel, bestL, KP, u0s
+    else
+        return KP.kernel, 0., KP, u0s
+    end
 end
