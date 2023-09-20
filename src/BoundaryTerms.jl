@@ -65,44 +65,14 @@ function Lc_x_x2_x0xt(u,H,m,λ,a,a_m1,gp1,gm1,κ)
     .+ imag.(a_m1 .+ a) .* (m.*xI .+ (1/6)*λ .* (-xI.^3 .+ 3xI.*(xR.^2))) 
     )
 
-    #A = im*pre_fac*( 
-    #            (x .- x[gp1]) ./ a_m1 + (x .- x[gm1]) ./ a
-    #            .- (a .+ a_m1)/2 .* (m .* x .+ (λ/6) .* x.^3)
-    #    )
-    #ARe = real(A)
-    #AIm = imag(A)
-
     SjKTRe = KRe*ARe .- KIm*AIm
     SjKTIm = KRe*AIm .+ KIm*ARe
     
-    #mul!(_B,K,[ARe ; AIm])
-    #_B = _A#transpose(_B)
-
-    #kReT = (p[1:div(end,2),:]*transpose(p[1:div(end,2),:]) 
-    #            - p[div(end,2)+1:end,:]*transpose(p[div(end,2)+1:end,:]))
-    #kImT = (p[1:div(end,2),:]*transpose(p[div(end,2)+1:end,:]) 
-    #            + p[div(end,2)+1:end,:]*transpose(p[1:div(end,2),:]))
-    
-    #ARe = @view _A[1:div(end,2)]
-    #AIm = @view _A[div(end,2)+1:end]
-    #SjKTRe = vec(transpose(ARe)*KreT .- transpose(AIm)*KimT)
-    #SjKTRe = @view _B[1:div(end,2)]#ARe #vec(transpose(ARe)*kReT .- transpose(AIm)*kImT)
-    #SjKTIm = vec(transpose(AIm)*KreT .+ transpose(ARe)*KimT)
-    #SjKTIm = @view _B[div(end,2) + 1:end]#AIm #vec(transpose(AIm)*kReT .+ transpose(ARe)*kImT)
-
     Lcx[1:div(end,2)]     .= SjKTRe  #vec((transpose(ARe)*kReT .- transpose(AIm)*kImT))
     Lcx[div(end,2)+1:end] .= SjKTIm #vec((transpose(AIm)*kReT .+ transpose(ARe)*kImT))
-    
 
-    
-    
     Lcx2[1:div(end,2)]     .= pre_fac*2*diag(KreT) .+ 2*(SjKTRe .* xR .- SjKTIm .* xI)
     Lcx2[div(end,2)+1:end] .= pre_fac*2*diag(KimT) .+ 2*(SjKTRe .* xI .+ SjKTIm .* xR)
-    
-    # Lcx2[1:1]     .= sum(pre_fac*2*diag(KreT) .+ 2*(SjKTRe .* xR .- SjKTIm .* xI))
-    # Lcx2[div(end,2)+1:div(end,2)+1] .= sum(pre_fac*2*diag(KimT) .+ 2*(SjKTRe .* xI .+ SjKTIm .* xR))
-    
-
     
     SjKj0Re = ARe.*view(KreT,:,1) .- AIm.*view(KimT,:,1)
     SjKj0Im = AIm.*view(KreT,:,1) .+ ARe.*view(KimT,:,1)
@@ -110,14 +80,6 @@ function Lc_x_x2_x0xt(u,H,m,λ,a,a_m1,gp1,gm1,κ)
     Lcx0xt[div(end,2)+1:end] .= pre_fac*(vec(KimT[1,:]) .+ vec(KimT[:,1])) .+ (SjKTRe .* xI[1] .+ SjKTIm .* xR[1]) .+ (SjKj0Re .* xI .+ SjKj0Im .* xR)
     return [Lcx...,Lcx2...,Lcx0xt...]
 end
-
-
-
-
-
-
-
-
 
 function getBoundaryTermsObservables(KP::KernelProblem{ScalarField{0}};kwargs...)
 
@@ -305,19 +267,19 @@ function calcBoundaryTerms(sol,BT::BoundaryTerms{MType,YT,L,L2}) where {MType <:
     @unpack Ys = BT
     NTr = length(sol)
 
-    d = 3
     NObs = 6*BT.model.contour.t_steps
 
-    LOs = zeros(T,NObs,length(Ys),NTr)
-    LOs_err = zeros(T,NObs,length(Ys),NTr)
+    LOs_Omega = zeros(T,NObs,length(Ys),NTr)
+    LOs_Y = zeros(T,NObs,length(Ys),NTr)
+    #LOs_err = zeros(T,NObs,length(Ys),NTr)
 
     Threads.@threads for tr in 1:NTr
     #for tr in 1:NTr
 
         N = size(sol[tr])[2]
         trVs = zeros(T,NObs,N)
-        dt = sol[tr].t[end] .- sol[tr].t[end-1]
-        nn = 0.1 / dt
+        #dt = sol[tr].t[end] .- sol[tr].t[end-1]
+        #nn = 0.1 / dt
         
         @inbounds @simd for i in 1:N
             tri = @view sol[tr][:,i]
@@ -328,27 +290,38 @@ function calcBoundaryTerms(sol,BT::BoundaryTerms{MType,YT,L,L2}) where {MType <:
         ### TODO: This needs to be abstracted away to the specific model
         XX = @view sol[tr][1:div(end,2),:]
         YY = @view sol[tr][div(end,2)+1:end,:]
-        #imX = [sum(abs.(XX.^2 .- YY.^2),dims=1) ; sum(abs.(2 .* XX .* YY),dims=1)]
-        imX = [maximum(abs.(XX),dims=1) ; maximum(abs.(YY),dims=1)]
-        #imX = [mean(abs.(XX),dims=1) ; mean(abs.(YY),dims=1)]
+        
+        #Omega = [sum(abs.(XX.^2 .- YY.^2),dims=1) ; sum(abs.(2 .* XX .* YY),dims=1)]
+        Omega = [maximum(abs.(XX),dims=1) ; maximum(abs.(YY),dims=1)]
+        #Omega = [mean(abs.(XX),dims=1) ; mean(abs.(YY),dims=1)]
     
 
-        trLOs = zeros(T,NObs,length(Ys))
-        err_trLOs = zeros(T,NObs,length(Ys))
+        trLOs_Omega = zeros(T,NObs,length(Ys))
+        trLOs_Y = zeros(T,NObs,length(Ys))
+        #err_trLOs = zeros(T,NObs,length(Ys))
         for i in eachindex(Ys)
-            Hinx = @. (imX[2,:] .<= Ys[i]) .& (imX[1,:] .<= Ys[i])
-            H = @view trVs[:,Hinx]
-            trLOs[:,i] = sum(H,dims=2)/N
-            err_trLOs[:,i] = sqrt.(sum(H.^2,dims=2)/N .- trLOs[:,i].^2) ./ sqrt(N/nn)
+            Hinx_Omega = @. (Omega[2,:] .<= Ys[i]) .& (Omega[1,:] .<= Ys[i])
+            Hinx_Y = @. (Omega[2,:] .<= Ys[i]) 
+            
+            H_Omega = @view trVs[:,Hinx_Omega]
+            H_Y = @view trVs[:,Hinx_Y]
+            
+            trLOs_Omega[:,i] = sum(H_Omega,dims=2)/N
+            trLOs_Y[:,i] = sum(H_Y,dims=2)/N
+
+            #err_trLOs[:,i] = sqrt.(sum(H.^2,dims=2)/N .- trLOs[:,i].^2) ./ sqrt(N/nn)
         end
-        LOs[:,:,tr] .= trLOs
-        LOs_err[:,:,tr] .= err_trLOs
+        LOs_Omega[:,:,tr] .= trLOs_Omega
+        LOs_Y[:,:,tr] .= trLOs_Y
+        #LOs_err[:,:,tr] .= err_trLOs
     end
     
-    DD = NTr * sum( 1 ./ LOs_err.^2, dims=3)
-    return mean(LOs,dims=3)  .± sqrt.( 1 ./ DD )
-    #return dropdims(mean(LOs,dims=d),dims=d) .± dropdims(std(LOs,dims=d),dims=d) ./ sqrt(NTr)
-
+    #DD = NTr * sum( 1 ./ LOs_err.^2, dims=3)
+    #return mean(LOs,dims=3)  .± sqrt.( 1 ./ DD )
+    
+    BT_Omega = mean(LOs,dims=3) .± std(LOs,dims=3) ./ sqrt(NTr)
+    BT_Y = mean(LOs,dims=3) .± std(LOs,dims=3) ./ sqrt(NTr)
+    return BT_Omega, BT_Y
 end
 
 

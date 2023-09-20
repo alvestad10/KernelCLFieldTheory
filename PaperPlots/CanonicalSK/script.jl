@@ -217,9 +217,11 @@ KernelCLFieldTheory.savefig(fig_FW_KP,joinpath(DIR,"fig_FW_KP.pdf"))
 
 Ys = collect(0:0.2:15)
 BT = getBoundaryTerms(KP;Ys=Ys)#,Xs=collect(0:0.1:8))
-@time B1 = calcBoundaryTerms(sol_KP,BT)
+@time B1_Omega, B1_Y = calcBoundaryTerms(sol_KP,BT)
 
 begin
+    B1 = B1_Omega
+
     observables = ["xRe", "xIm", "x2Re", "x2Im", "corr0tRe", "corr0tIm"]
     t_steps = KP.model.contour.t_steps
 
