@@ -49,13 +49,17 @@ function learnKernel(LK::LearnKernel; reset_u0s = false, val_seed=100, u0s=nothi
             tdL = 0.
             for k in 1:n_gradient_pr_run
                 print(" ",k)
-                tdL += @elapsed dHs = getdH_imx(sol,KP)
-                Flux.update!(opt, KP.kernel.H, dHs)
+                try
+                    tdL += @elapsed dHs = getdH_imx(sol,KP)
+                    Flux.update!(opt, KP.kernel.H, dHs)
 
-                # Updating the drift and noise term with the new kernel
-                KP = updateProblem(KP)
-
-                
+                    # Updating the drift and noise term with the new kernel
+                    KP = updateProblem(KP)
+                catch e
+                    print("Error: ", e)
+                    break
+                end
+                    
                 
                 if k == n_gradient_pr_run
                     print(" ::::: ")
@@ -66,6 +70,7 @@ function learnKernel(LK::LearnKernel; reset_u0s = false, val_seed=100, u0s=nothi
             println("\t\t(time_grad: ", round(tdL,digits=2), ")", "(time_run_train: ", round(trun,digits=2),")")
 
             u0s = [tr[:,end] for tr in sol]
+            
         end
 
         if reset_u0s || !validation
