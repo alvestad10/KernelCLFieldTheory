@@ -316,6 +316,8 @@ function calcBoundaryTerms(sol,BT::BoundaryTerms{MType,YT,L,L2}) where {MType <:
 
         N = size(sol[tr])[2]
         trVs = zeros(T,NObs,N)
+        dt = sol[tr].t[end] .- sol[tr].t[end-1]
+        nn = 0.1 / dt
         
         @inbounds @simd for i in 1:N
             tri = @view sol[tr][:,i]
@@ -337,13 +339,14 @@ function calcBoundaryTerms(sol,BT::BoundaryTerms{MType,YT,L,L2}) where {MType <:
             Hinx = @. (imX[2,:] .<= Ys[i]) .& (imX[1,:] .<= Ys[i])
             H = @view trVs[:,Hinx]
             trLOs[:,i] = sum(H,dims=2)/N
-            err_trLOs[:,i] = sqrt.(sum(H.^2,dims=2)/N .- trLOs[:,i].^2) ./ sqrt(N)
+            err_trLOs[:,i] = sqrt.(sum(H.^2,dims=2)/N .- trLOs[:,i].^2) ./ sqrt(N/nn)
         end
         LOs[:,:,tr] .= trLOs
         LOs_err[:,:,tr] .= err_trLOs
     end
     
-    return mean(LOs,dims=3)  .± sqrt.(sum(LOs_err.^2,dims=3))
+    DD = NTr * sum( 1 ./ LOs_err.^2, dims=3)
+    return mean(LOs,dims=3)  .± sqrt.( 1 ./ DD )
     #return dropdims(mean(LOs,dims=d),dims=d) .± dropdims(std(LOs,dims=d),dims=d) ./ sqrt(NTr)
 
 end
