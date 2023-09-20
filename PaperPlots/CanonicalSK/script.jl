@@ -8,7 +8,7 @@ using Statistics, LinearAlgebra
 ############################################################################
 ##  Load and Save the results
 ############################################################################
-DIR = "PaperPlots/CanonicalSK/results/RT_10_at_01_as_02/run1"
+DIR = "PaperPlots/CanonicalSK/results/RT_05_at_01_as_02/run1"
 if !isdir(DIR)
     mkpath(DIR)
 end
@@ -17,7 +17,7 @@ end
 
 Base.ENV["GKSwstype"]="nul"
 
-M = ScalarField_from_at(D=1,m=1.0,λ=1.,RT=1.0,β=0.4,at=0.1,n_steps=8,as=0.2,
+M = ScalarField_from_at(D=1,m=1.0,λ=1.,RT=0.5,β=0.4,at=0.1,n_steps=8,as=0.2,
                         Δβ = 0.5                
                         #ΔE = 0.05              
 )
@@ -49,7 +49,7 @@ KP = KernelCLFieldTheory.KernelProblem(M);
 #    Note: The termalization is removed is u0 initialized from end of 
 #    previous run
 ############################################################################
-scheme = ImplicitEM()
+scheme = LambaEM() #ImplicitEM()
 RS_train = RunSetup(tspan=3,
                     saveat=0.005,
                     tspan_thermalization=50,  
@@ -64,9 +64,9 @@ RS_val = RunSetup(tspan=1,
 )
 
 # The testing setup
-RS_test = RunSetup(tspan=1000, 
+RS_test = RunSetup(tspan=100, 
                     tspan_thermalization=100, 
-                    scheme=scheme, dtmax=1e-4, abstol=1e-4, reltol=1e-4,
+                    scheme=scheme, dtmax=1e-5, abstol=1e-4, reltol=1e-4,
                     NTr=10
 )
 
@@ -215,7 +215,7 @@ KernelCLFieldTheory.savefig(fig_FW_KP,joinpath(DIR,"fig_FW_KP.pdf"))
 ############################################################################
 
 
-Ys = collect(0:0.2:15)
+Ys = collect(0:0.5:10)
 BT = getBoundaryTerms(KP;Ys=Ys)#,Xs=collect(0:0.1:8))
 @time B1_Omega, B1_Y = calcBoundaryTerms(sol_KP,BT)
 
@@ -234,13 +234,35 @@ begin
         scatter!(fig_BT,Ys,_BT_mean, label=observables[i];KernelCLFieldTheory.markers_dict(i)...)
     end
     hline!(fig_BT,[0.0];label=false,KernelCLFieldTheory.solution_line_dict()...)
-    fig_BT
+    fig_BT_Omega = fig_BT
+    fig_BT_Omega
+end
+
+begin
+    B1 = B1_Y
+
+    observables = ["xRe", "xIm", "x2Re", "x2Im", "corr0tRe", "corr0tIm"]
+    t_steps = KP.model.contour.t_steps
+
+    fig_BT = plot(xlabel=L"Y", ylabel=L"B_1(Y)";KernelCLFieldTheory.plot_setup(:topright)...)
+    for i in eachindex(observables)
+        if i > 4 || i < 3
+            continue
+        end
+        _BT_mean = vec(mean(B1[(i-1)*t_steps .+ (1:t_steps),:],dims=1))
+        scatter!(fig_BT,Ys,_BT_mean, label=observables[i];KernelCLFieldTheory.markers_dict(i)...)
+    end
+    hline!(fig_BT,[0.0];label=false,KernelCLFieldTheory.solution_line_dict()...)
+    fig_BT_Y = fig_BT
+    fig_BT_Y
 end
 
 jldsave(joinpath(DIR,"BTs.jld2"), BT=BT)
-jldsave(joinpath(DIR,"B1.jld2"), B1=B1)
+jldsave(joinpath(DIR,"B1_Omega.jld2"), B1_Omega=B1_Omega)
+jldsave(joinpath(DIR,"B1_Y.jld2"), B1_Y=B1_Y)
 
-KernelCLFieldTheory.savefig(fig_BT,joinpath(DIR,"fig_BT.pdf"))
+KernelCLFieldTheory.savefig(fig_BT,joinpath(DIR,"fig_BT_Omega.pdf"))
+KernelCLFieldTheory.savefig(fig_BT,joinpath(DIR,"fig_BT_Y.pdf"))
 
 
 

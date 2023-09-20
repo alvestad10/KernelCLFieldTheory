@@ -319,8 +319,8 @@ function calcBoundaryTerms(sol,BT::BoundaryTerms{MType,YT,L,L2}) where {MType <:
     #DD = NTr * sum( 1 ./ LOs_err.^2, dims=3)
     #return mean(LOs,dims=3)  .± sqrt.( 1 ./ DD )
     
-    BT_Omega = mean(LOs,dims=3) .± std(LOs,dims=3) ./ sqrt(NTr)
-    BT_Y = mean(LOs,dims=3) .± std(LOs,dims=3) ./ sqrt(NTr)
+    BT_Omega = mean(LOs_Omega,dims=3) .± std(LOs_Omega,dims=3) ./ sqrt(NTr)
+    BT_Y = mean(LOs_Y,dims=3) .± std(LOs_Y,dims=3) ./ sqrt(NTr)
     return BT_Omega, BT_Y
 end
 
