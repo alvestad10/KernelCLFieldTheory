@@ -1,7 +1,6 @@
 module KernelCLFieldTheory
 
 using CUDA
-using Metal
 using LinearAlgebra, StatsBase, Statistics
 using PreallocationTools
 using Parameters
