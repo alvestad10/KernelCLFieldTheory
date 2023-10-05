@@ -262,30 +262,37 @@ end
 
 
 
-function calcBoundaryTerms(sol,BT::BoundaryTerms{MType,YT,L,L2}) where {MType <: Model,YT,L,L2}
+function calcBoundaryTerms3(sol,BT::BoundaryTerms{MType,YT,L,L2}; T=Float64, all_trVs=nothing) where {MType <: Model,YT,L,L2}
     
     @unpack Ys = BT
     NTr = length(sol)
 
-    NObs = 6*BT.model.contour.t_steps
+    _all_trVs = []
 
+    NObs = 6*BT.model.contour.t_steps
     LOs_Omega = zeros(T,NObs,length(Ys),NTr)
     LOs_Y = zeros(T,NObs,length(Ys),NTr)
-    #LOs_err = zeros(T,NObs,length(Ys),NTr)
+    LOs_err_Omega = zeros(T,NObs,length(Ys),NTr)
+    LOs_err_Y = zeros(T,NObs,length(Ys),NTr)
 
-    Threads.@threads for tr in 1:NTr
-    #for tr in 1:NTr
+    #Threads.@threads for tr in 1:NTr
+    for tr in 1:NTr
 
         N = size(sol[tr])[2]
-        trVs = zeros(T,NObs,N)
-        #dt = sol[tr].t[end] .- sol[tr].t[end-1]
-        #nn = 0.1 / dt
+        dt = sol[tr].t[end] .- sol[tr].t[end-1]
+        nn = 0.1 / dt
         
-        @inbounds @simd for i in 1:N
-            tri = @view sol[tr][:,i]
-            trVs[:,i] = BT.L_CO(tri)
+        if isnothing(all_trVs)
+            trVs = zeros(T,NObs,N)
+            @time Threads.@threads for i in 1:N
+                @inbounds tri = @view sol[tr][:,i]
+                @inbounds trVs[:,i] = BT.L_CO(tri)
+            end
+        else
+            trVs = all_trVs[tr]
         end
         
+
 
         ### TODO: This needs to be abstracted away to the specific model
         XX = @view sol[tr][1:div(end,2),:]
@@ -298,9 +305,10 @@ function calcBoundaryTerms(sol,BT::BoundaryTerms{MType,YT,L,L2}) where {MType <:
 
         trLOs_Omega = zeros(T,NObs,length(Ys))
         trLOs_Y = zeros(T,NObs,length(Ys))
-        #err_trLOs = zeros(T,NObs,length(Ys))
-        for i in eachindex(Ys)
-            Hinx_Omega = @. (Omega[2,:] .<= Ys[i]) .& (Omega[1,:] .<= Ys[i])
+        err_trLOs_Omega = zeros(T,NObs,length(Ys))
+        err_trLOs_Y = zeros(T,NObs,length(Ys))
+        @time Threads.@threads for i in eachindex(Ys)
+            Hinx_Omega = @. (Omega[2,:] <= Ys[i]) & (Omega[1,:] <= Ys[i])
             Hinx_Y = @. (Omega[2,:] .<= Ys[i]) 
             
             H_Omega = @view trVs[:,Hinx_Omega]
@@ -309,19 +317,28 @@ function calcBoundaryTerms(sol,BT::BoundaryTerms{MType,YT,L,L2}) where {MType <:
             trLOs_Omega[:,i] = sum(H_Omega,dims=2)/N
             trLOs_Y[:,i] = sum(H_Y,dims=2)/N
 
-            #err_trLOs[:,i] = sqrt.(sum(H.^2,dims=2)/N .- trLOs[:,i].^2) ./ sqrt(N/nn)
+            err_trLOs_Omega[:,i] = sqrt.(sum(H_Omega.^2,dims=2)/N .- trLOs_Omega[:,i].^2) ./ sqrt(N/nn)
+            err_trLOs_Y[:,i] = sqrt.(sum(H_Y.^2,dims=2)/N .- trLOs_Y[:,i].^2) ./ sqrt(N/nn)
         end
         LOs_Omega[:,:,tr] .= trLOs_Omega
         LOs_Y[:,:,tr] .= trLOs_Y
-        #LOs_err[:,:,tr] .= err_trLOs
+        LOs_err_Omega[:,:,tr] .= err_trLOs_Omega
+        LOs_err_Y[:,:,tr] .= err_trLOs_Y
+
+        append!(_all_trVs,[trVs])
     end
     
-    #DD = NTr * sum( 1 ./ LOs_err.^2, dims=3)
-    #return mean(LOs,dims=3)  .± sqrt.( 1 ./ DD )
-    
-    BT_Omega = mean(LOs_Omega,dims=3) .± std(LOs_Omega,dims=3) ./ sqrt(NTr)
-    BT_Y = mean(LOs_Y,dims=3) .± std(LOs_Y,dims=3) ./ sqrt(NTr)
-    return BT_Omega, BT_Y
+    if NTr == 1
+        DD_Y = NTr * sum( 1 ./ LOs_err_Y.^2, dims=3)
+        BT_Y = mean(LOs_Y,dims=3)  .± sqrt.( 1 ./ DD_Y )
+
+        DD_Omega = NTr * sum( 1 ./ LOs_err_Omega.^2, dims=3)
+        BT_Omega = mean(LOs_Omega,dims=3)  .± sqrt.( 1 ./ DD_Omega )
+    else
+        BT_Omega = mean(LOs_Omega,dims=3) .± std(LOs_Omega,dims=3) ./ sqrt(NTr)
+        BT_Y = mean(LOs_Y,dims=3) .± std(LOs_Y,dims=3) ./ sqrt(NTr)
+    end
+    return BT_Omega, BT_Y, _all_trVs
 end
 
 
