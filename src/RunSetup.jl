@@ -24,7 +24,7 @@ end
 
 
 
-function run_simulation(KP::KernelProblem, runSetup::RunSetup; seed=nothing, u0 = nothing, T=Float64)
+function run_simulation(KP::KernelProblem, runSetup::RunSetup; seed=nothing, u0 = nothing, T=Float64, gpu=false)
     @unpack tspan, NTr, saveat,scheme, dt, abstol, reltol, dtmax, adaptive, tspan_thermalization = runSetup
     
     @unpack kernel, a, b, model = KP
@@ -37,8 +37,14 @@ function run_simulation(KP::KernelProblem, runSetup::RunSetup; seed=nothing, u0 
         tspan_thermalization = 0.01
     end
 
-    noise_rate_prototype = kernel.H #get_noise_rate_prototype(model,T)
-    caches = [get_caches(model, T) for _ in 1:NTr]
+    noise_rate_prototype = get_noise_rate_prototype(model,T)
+   
+    if gpu
+        u0 = [cu(u0[i]) for i in 1:NTr]
+        noise_rate_prototype = cu(noise_rate_prototype)
+    end
+   
+    caches = [get_caches(model, T; gpu=gpu) for _ in 1:NTr]
 
     function prob_func(prob,i,repeat)
         if isnothing(seed)
@@ -50,7 +56,15 @@ function run_simulation(KP::KernelProblem, runSetup::RunSetup; seed=nothing, u0 
     
     isIdentity = all(diag(kernel.H) .- 1. .== 0.0)
     if isIdentity
-        prob = SDEProblem(a,b,u0[1],(0.0,tspan+tspan_thermalization),caches[1])
+        
+        # Getting sparsity pattern
+        du0 = copy(u0[1])
+        @time jac_sparsity = Symbolics.jacobian_sparsity((du, u) -> a(du, u, caches[1], 0.0),du0, u0[1])
+
+        f = SDEFunction(a,b; jac_prototype = float.(jac_sparsity))
+        prob = SDEProblem(f,b,u0[1],(0.0,tspan+tspan_thermalization),caches[1])
+        
+        #prob = SDEProblem(a,b,u0[1],(0.0,tspan+tspan_thermalization),caches[1])
     else
         prob = SDEProblem(a,b,u0[1],(0.0,tspan+tspan_thermalization),caches[1],
                                     noise_rate_prototype=noise_rate_prototype

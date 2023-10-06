@@ -1,14 +1,16 @@
 module KernelCLFieldTheory
 
-using CUDA
+using CUDA, CUDAKernels, KernelAbstractions
 using LinearAlgebra, StatsBase, Statistics
 using PreallocationTools
 using Parameters
 using StochasticDiffEq
+using DiffEqGPU
 using Flux
 using Zygote
 using Tullio
 using SparseArrays
+using Symbolics
 
 using Logging: global_logger
 using TerminalLoggers: TerminalLogger

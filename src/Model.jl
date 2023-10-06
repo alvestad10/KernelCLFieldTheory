@@ -158,22 +158,25 @@ function get_noise_rate_prototype(model::ScalarField{D},T::Type = Float64) where
     return zeros(T,2*t_steps * n_steps^D, t_steps * n_steps^D)
 end
 
-function get_caches(model::ScalarField{0},T::Type = Float64)
+function get_caches(model::ScalarField{0},T::Type = Float64; gpu = false)
     t_steps = model.contour.t_steps
 
     tmp = zeros(T,8t_steps)
     return dualcache(tmp)
 end
 
-function get_caches(model::ScalarField{1},T::Type = Float64)
+function get_caches(model::ScalarField{1},T::Type = Float64; gpu = false)
     t_steps = model.contour.t_steps
     n_steps = model.n_steps
 
     tmp = zeros(T,8t_steps,n_steps)
+    if gpu
+        tmp = cu(tmp)
+    end
     return dualcache(tmp)
 end
 
-function get_caches(model::ScalarField{2},T::Type = Float64)
+function get_caches(model::ScalarField{2},T::Type = Float64; gpu = false)
     t_steps = model.contour.t_steps
     n_steps = model.n_steps
 
@@ -181,7 +184,7 @@ function get_caches(model::ScalarField{2},T::Type = Float64)
     return dualcache(tmp)
 end
 
-function get_caches(model::ScalarField{3},T::Type = Float64)
+function get_caches(model::ScalarField{3},T::Type = Float64; gpu = false)
     t_steps = model.contour.t_steps
     n_steps = model.n_steps
 
