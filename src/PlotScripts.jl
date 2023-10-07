@@ -40,11 +40,11 @@ function plotSKContour(KP::KernelProblem,sol;obs=nothing)
         obs = calc_obs(KP,sol)
     end
     
-    if sol isa SciMLBase.RODESolution || length(sol) == 1
-        avgRe, err_avgRe, avgIm, err_avgIm, avg2Re, err_avg2Re, avg2Im, err_avg2Im, corr0tRe, err_corr0tRe, corr0tIm, err_corr0tIm = obs
-    elseif sol isa SciMLBase.EnsembleSolution
-        avgRe, err_avgRe, avgIm, err_avgIm, avg2Re, err_avg2Re, avg2Im, err_avg2Im, corr0tRe, err_corr0tRe, corr0tIm, err_corr0tIm = calc_meanObs(obs)
-    end
+    #if sol isa SciMLBase.RODESolution || length(sol) == 1
+    #avgRe, err_avgRe, avgIm, err_avgIm, avg2Re, err_avg2Re, avg2Im, err_avg2Im, corr0tRe, err_corr0tRe, corr0tIm, err_corr0tIm = obs
+    #elseif sol isa SciMLBase.EnsembleSolution
+        avgRe, avgIm, avg2Re, avg2Im, corr0tRe,  corr0tIm  = obs #calc_meanObs(obs)
+    #end
 
     
     tp = KP.model.contour.tp[1:end-1]
@@ -68,18 +68,18 @@ function plotSKContour(KP::KernelProblem,sol;obs=nothing)
         plot!(fig,tp,ones(length(tp))*KP.y["phi2Im"],label=false;solution_line_dict()...)
     end
     
-    scatter!(fig,tp,avgRe .± err_avgRe,label=L"$\textrm{Re}\langle \phi \rangle$";markers_dict(1)...)
-    scatter!(fig,tp,avgIm .± err_avgIm,label=L"$\textrm{Im}\langle \phi \rangle$";markers_dict(2)...)
+    scatter!(fig,tp,avgRe, label=L"$\textrm{Re}\langle \phi \rangle$";markers_dict(1)...)
+    scatter!(fig,tp,avgIm, label=L"$\textrm{Im}\langle \phi \rangle$";markers_dict(2)...)
     
-    scatter!(fig,tp,avg2Re .± err_avg2Re,label=L"$\textrm{Re}\langle \phi^2 \rangle$";markers_dict(3,:square)...)
-    scatter!(fig,tp,avg2Im .± err_avg2Im,label=L"$\textrm{Im}\langle \phi^2 \rangle$";markers_dict(4,:circle)...)
+    scatter!(fig,tp,avg2Re, label=L"$\textrm{Re}\langle \phi^2 \rangle$";markers_dict(3,:square)...)
+    scatter!(fig,tp,avg2Im, label=L"$\textrm{Im}\langle \phi^2 \rangle$";markers_dict(4,:circle)...)
 
     if "corr0tRe" in keys(KP.y)
         plot!(fig,tp,KP.y["corr0tRe"],label=false;solution_line_dict()...)
         plot!(fig,tp,KP.y["corr0tIm"],label=false;solution_line_dict()...)
     end
-    scatter!(fig,tp,corr0tRe, yerror = err_corr0tRe,label=L"$\textrm{Re}\langle \phi(0)\phi(t) \rangle$";markers_dict(5,:dtriangle)...)
-    scatter!(fig,tp,corr0tIm .± err_corr0tIm,label=L"$\textrm{Im}\langle \phi(0)\phi(t) \rangle$";markers_dict(6,:utriangle)...)
+    scatter!(fig,tp,corr0tRe,label=L"$\textrm{Re}\langle \phi(0)\phi(t) \rangle$";markers_dict(5,:dtriangle)...)
+    scatter!(fig,tp,corr0tIm,label=L"$\textrm{Im}\langle \phi(0)\phi(t) \rangle$";markers_dict(6,:utriangle)...)
     
     return fig
 end
@@ -91,20 +91,20 @@ function plotFWContour(KP::KernelProblem,sol;obs=nothing)
         obs = calc_obs(KP,sol; onlyCorr=true)
     end
     
-    if sol isa SciMLBase.RODESolution || length(sol) == 1
-        avgRe, err_avgRe, avgIm, err_avgIm, avg2Re, err_avg2Re, avg2Im, err_avg2Im, corr0tRe, err_corr0tRe, corr0tIm, err_corr0tIm = obs
-    elseif sol isa SciMLBase.EnsembleSolution
-        avgRe, err_avgRe, avgIm, err_avgIm, avg2Re, err_avg2Re, avg2Im, err_avg2Im, corr0tRe, err_corr0tRe, corr0tIm, err_corr0tIm = calc_meanObs(obs)
-    end
+    #if sol isa SciMLBase.RODESolution || length(sol) == 1
+    #avgRe, err_avgRe, avgIm, err_avgIm, avg2Re, err_avg2Re, avg2Im, err_avg2Im, corr0tRe, err_corr0tRe, corr0tIm, err_corr0tIm = obs
+    #elseif sol isa SciMLBase.EnsembleSolution
+        avgRe, avgIm, avg2Re,  avg2Im,  corr0tRe,  corr0tIm  = obs#calc_meanObs(obs)
+    #end
 
     
     maxinx = findmax(real(KP.model.contour.x0))[2]
     tp = KP.model.contour.tp[1:maxinx]
 
     corr0tRe = corr0tRe[1:maxinx]
-    err_corr0tRe = err_corr0tRe[1:maxinx]
+    #err_corr0tRe = err_corr0tRe[1:maxinx]
     corr0tIm = corr0tIm[1:maxinx]
-    err_corr0tRe = err_corr0tIm[1:maxinx]
+    #err_corr0tRe = err_corr0tIm[1:maxinx]
 
     legend_outside = true
 
@@ -139,8 +139,8 @@ function plotFWContour(KP::KernelProblem,sol;obs=nothing)
         scatter!(fig,KP.y["thimble_J0"]["tp"],KP.y["thimble_J0"]["corr0tIm"],yerror=KP.y["thimble_J0"]["corr0tIm_err"],label="Thimble j0 Im";markers_dict("black",:circle)...,markeralpha=1.0)
     end
 
-    scatter!(fig,tp,corr0tRe, yerror = err_corr0tRe,label=L"$\textrm{Re}\langle \phi(0)\phi(t) \rangle$";markers_dict(5,:dtriangle)...)
-    scatter!(fig,tp,corr0tIm, yerror = err_corr0tIm,label=L"$\textrm{Im}\langle \phi(0)\phi(t) \rangle$";markers_dict(6,:utriangle)...)
+    scatter!(fig,tp,corr0tRe,label=L"$\textrm{Re}\langle \phi(0)\phi(t) \rangle$";markers_dict(5,:dtriangle)...)
+    scatter!(fig,tp,corr0tIm,label=L"$\textrm{Im}\langle \phi(0)\phi(t) \rangle$";markers_dict(6,:utriangle)...)
     
     return fig
 end

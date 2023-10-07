@@ -502,7 +502,7 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{1}}; H = KP.kernel.H)
     one_over_a = 1 ./ (a .- κ)
     one_over_am1 = 1 ./ (a_m1 .- κ)
     
-    pre_fac = (as / abs(a[1]))
+    pre_fac = (as / (as*abs(a[1])))
     
     KRe,KIm = getK(H)
     KC = KRe .+ im*KIm

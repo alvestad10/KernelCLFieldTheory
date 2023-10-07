@@ -34,7 +34,11 @@ function calc_obs(KP::KernelProblem{ScalarField{D}},sol;onlyCorr=false, max_inx 
         dt = sol.t[end] .- sol.t[end-1]
         nn = 1.0 / dt
 
-        _u = Array(sol)[:,1:max_inx]
+        if typeof(Array(sol)) <: CuArray
+            _u = Array(Array(sol))[:,1:max_inx]
+        else
+            _u = Array(sol)[:,1:max_inx]
+        end
         _uRe = @view _u[1:t_steps*n_steps^D,:]
         _uIm = @view _u[t_steps*n_steps^D + 1:end,:]
         
@@ -128,7 +132,11 @@ function calc_obs(KP::KernelProblem{ScalarField{D}},sol;onlyCorr=false, max_inx 
         corr0tRe = zeros(T,length(sol),t_steps)
         corr0tIm = zeros(T,length(sol),t_steps)
 
-        X = [Array(tr) for tr in sol]
+        if typeof(Array(sol[1])) <: CuArray
+            X = [Array(Array(tr)) for tr in sol]
+        else
+            X = [Array(tr) for tr in sol]
+        end
 
         for i in eachindex(sol)
             _u = X[i]
@@ -161,6 +169,91 @@ function calc_obs(KP::KernelProblem{ScalarField{D}},sol;onlyCorr=false, max_inx 
         return avgRe, avgIm, avg2Re, avg2Im, corr0tRe, corr0tIm
     end
 end
+
+
+
+"""
+    Calculate the observables for each of the trajectories
+"""
+function calc_mean_obs(KP::KernelProblem{ScalarField{D}},sol; onlyCorr=false) where {D}
+    t_steps = KP.model.contour.t_steps
+    n_steps = KP.model.n_steps
+
+    #T = eltype(sol[1]) #eltype( getKernelParams(KP.kernel) )
+
+    if sol isa SciMLBase.EnsembleSolution
+        solX = reshape(Array(sol),size(sol)[1], size(sol)[2]*size(sol)[3])
+    
+    elseif sol[1] isa SciMLBase.EnsembleSolution
+        get_sol_i(i) = reshape(Array(sol[i]),size(sol[i])[1], size(sol[i])[2]*size(sol[i])[3])
+        solX = get_sol_i(1)
+        for i in 2:length(sol)
+            solX = hcat(solX,get_sol_i(i))
+        end
+    elseif sol[1] == SciMLBase.RODESolution
+        solX = Array(sol[1])
+        for i in 2:length(sol)
+            solX = hcat(solX,Array(sol[i]))
+        end
+    else
+        solX = Array(sol)
+    end
+
+    N = size(solX)[2]
+    
+    n_bins = 50
+    n_pr_bin = div(N,n_bins)
+    avgRe = zeros(t_steps,n_bins)
+    avgIm = zeros(t_steps,n_bins)
+    avg2Re = zeros(t_steps,n_bins)
+    avg2Im = zeros(t_steps,n_bins)
+    corr0tRe = zeros(t_steps,n_bins)
+    corr0tIm = zeros(t_steps,n_bins)
+
+
+    Threads.@threads for b in 1:n_bins
+
+        inx = n_pr_bin*(b-1) .+ (1:n_pr_bin)
+        _u = solX[:,inx]
+        _uRe = @view _u[1:t_steps*n_steps^D,:]
+        _uIm = @view _u[t_steps*n_steps^D + 1:end,:]
+
+        _uu = zeros(2t_steps,length(inx))
+        @inbounds for i in 1:n_steps^(D > 0 ? 1 : 0)
+                for j in 1:n_steps^(D-1 > 0 ? 1 : 0)
+                for k in 1:n_steps^(D-2 > 0 ? 1 : 0)
+                  _uu[1:t_steps,:] .+= @view _uRe[(k-1)*t_steps*n_steps^2 + (j-1)*t_steps*n_steps + (i-1)*t_steps .+ (1:t_steps),:]
+                  _uu[t_steps+1:end,:] .+= @view _uIm[(k-1)*t_steps*n_steps^2 + (j-1)*t_steps*n_steps + (i-1)*t_steps .+ (1:t_steps),:]
+                end
+            end
+        end
+
+        phi_p_Re = (@view _uu[1:t_steps,:]) / n_steps^D #mean(_uu[1:t_steps,:,:,:],dims=(2,3))[:,1,1,:]
+        phi_p_Im = (@view _uu[t_steps+1:end,:]) / n_steps^D #mean(_uu[t_steps+1:end,:,:,:],dims=(2,3))[:,1,1,:]
+
+        avgRe[:,b] .= mean(phi_p_Re,dims=2)
+        avgIm[:,b] .= mean(phi_p_Im,dims=2)
+
+        avg2Re[:,b] .= mean(phi_p_Re.^2 .- phi_p_Im.^2,dims=2)
+        avg2Im[:,b] .= 2*mean(phi_p_Re .* phi_p_Im,dims=2)
+
+        corr0tRe[:,b] .= mean(phi_p_Re[1:1,:] .* phi_p_Re .- phi_p_Im[1:1,:] .* phi_p_Im,dims=2)
+        corr0tIm[:,b] .= mean(phi_p_Re .* phi_p_Im[1:1,:] .+ phi_p_Re[1:1,:] .* phi_p_Im,dims=2)
+
+    end
+
+
+
+    d=2
+    return mean(avgRe,dims=d)[:], (std(avgRe,dims=d)/sqrt(n_bins))[:], 
+        mean(avgIm,dims=d)[:], (std(avgIm,dims=d)/sqrt(n_bins))[:],
+        mean(avg2Re,dims=d)[:], (std(avg2Re,dims=d)/sqrt(n_bins))[:], 
+        mean(avg2Im,dims=d)[:], (std(avg2Im,dims=d)/sqrt(n_bins))[:],
+        mean(corr0tRe,dims=d)[:], (std(corr0tRe,dims=d)/sqrt(n_bins))[:], 
+        mean(corr0tIm,dims=d)[:], (std(corr0tIm,dims=d)/sqrt(n_bins))[:]
+end
+
+
 
 
 """
