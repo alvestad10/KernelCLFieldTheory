@@ -71,23 +71,37 @@ function run_simulation(KP::KernelProblem, runSetup::RunSetup; seed=nothing, u0 
                 )
     end
 
-    ensemble_prob = EnsembleProblem(prob,prob_func=prob_func)
+    run_settings = Dict(
+        :adaptive => adaptive,
+        :dt => dt,
+        :maxiters => 1e8,
+        :progress => true,
+        :progress_steps => 100,
+        :saveat => tspan_thermalization:saveat:tspan+tspan_thermalization,
+        :save_start => true,
+        :dtmax => dtmax,
+        :abstol => abstol,
+        :reltol => reltol
+    )
+
 
     # Getting progressbar
     global_logger(TerminalLogger())
+    if NTr > 1
+        ensprob = EnsembleProblem(prob,prob_func=prob_func)
+        return solve(ensprob,
+                scheme,
+                EnsembleThreads(); 
+                trajectories=NTr,
+                run_settings...
+                )
+    else
+        return solve(prob,
+                    scheme;
+                    run_settings...)
+    end
+    
 
-    return solve(ensemble_prob,
-                    #prob,
-                    scheme,
-                    EnsembleThreads(), trajectories=NTr,
-                    adaptive = adaptive,
-                    dt = dt,
-                    maxiters = 1e8,
-                    progress=true,
-                    progress_steps = 100,
-                    saveat=tspan_thermalization:saveat:tspan+tspan_thermalization,
-                    save_start = true,
-                    dtmax = dtmax,
-                    abstol = abstol,reltol = reltol)
+    
 
 end

@@ -9,7 +9,7 @@ export getScroSol
 # SETTINGS
 ######
 const NSCRO = 128
-const T = BigFloat
+const T = Float64 #BigFloat
 const DIR = "./ScroSols"
 
 function setupScroSol()

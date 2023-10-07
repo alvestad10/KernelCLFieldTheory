@@ -31,7 +31,7 @@ function get_ab(model::ScalarField{3},kernel::MatrixKernel{T}) where {T <: Real}
     V_pre_fac_Re = real(V_pre_fac) #hcat([real(V_pre_fac) for i in 1:n_steps]...)
     V_pre_fac_Im = imag(V_pre_fac) #hcat([imag(V_pre_fac) for i in 1:n_steps]...)
 
-    pre_fac = (1. / abs(a[1]))
+    pre_fac = (1. / (abs(a[1])*as^2))
     #im_pre_fac = im*pre_fac
 
     isIdentity = all(diag(H) .- 1. .== 0.0)
@@ -177,7 +177,7 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{3}}; H = KP.kernel.H)
     a_m1 = a[gtm1]
     as_prefac = 1 / (as^2) 
     
-    pre_fac = (as^3 / abs(a[1]))
+    pre_fac = (as^3 / (abs(a[1])*as^3))
     
     KRe,KIm = getK(H)
     KC = KRe .+ im*KIm

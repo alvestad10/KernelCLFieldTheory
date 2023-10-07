@@ -144,7 +144,7 @@ function getBoundaryTermsObservables(KP::KernelProblem{ScalarField{1}};kwargs...
     V_pre_fac_Re = real(V_pre_fac) #hcat([real(V_pre_fac) for i in 1:n_steps]...)
     V_pre_fac_Im = imag(V_pre_fac) #hcat([imag(V_pre_fac) for i in 1:n_steps]...)
 
-    pre_fac = (1. / abs(a[1]))
+    pre_fac = (1. / (abs(a[1])*as))
     #im_pre_fac = im*pre_fac
 
     isIdentity = all(diag(H) .- 1. .== 0.0)
@@ -156,7 +156,7 @@ function getBoundaryTermsObservables(KP::KernelProblem{ScalarField{1}};kwargs...
     
         Lcx = zeros(2*t_steps)
         Lcx2 = zeros(2*t_steps)
-        Lcx0xt = zeros(2*t_steps)
+        #Lcx0xt = zeros(2*t_steps)
     
         _uRe = @view u[1:t_steps*n_steps]
         _uIm = @view u[t_steps*n_steps + 1:end]
@@ -243,7 +243,7 @@ function getBoundaryTermsObservables(KP::KernelProblem{ScalarField{1}};kwargs...
         return [Lcx...,Lcx2...,Lcx0xt...]
     end
     
-    return LcO, nothing#L2cO
+    return LcO, nothing #L2cO
 end
 
 
@@ -262,83 +262,73 @@ end
 
 
 
-function calcBoundaryTerms3(sol,BT::BoundaryTerms{MType,YT,L,L2}; T=Float64, all_trVs=nothing) where {MType <: Model,YT,L,L2}
+
+
+function calc_Ls(sol,BT::BoundaryTerms{MType,YT,L,L2}) where {MType <: Model,YT,L,L2}
     
-    @unpack Ys = BT
-    NTr = length(sol)
-
-    _all_trVs = []
-
-    NObs = 6*BT.model.contour.t_steps
-    LOs_Omega = zeros(T,NObs,length(Ys),NTr)
-    LOs_Y = zeros(T,NObs,length(Ys),NTr)
-    LOs_err_Omega = zeros(T,NObs,length(Ys),NTr)
-    LOs_err_Y = zeros(T,NObs,length(Ys),NTr)
-
-    #Threads.@threads for tr in 1:NTr
-    for tr in 1:NTr
-
-        N = size(sol[tr])[2]
-        dt = sol[tr].t[end] .- sol[tr].t[end-1]
-        nn = 0.1 / dt
-        
-        if isnothing(all_trVs)
-            trVs = zeros(T,NObs,N)
-            @time Threads.@threads for i in 1:N
-                @inbounds tri = @view sol[tr][:,i]
-                @inbounds trVs[:,i] = BT.L_CO(tri)
-            end
-        else
-            trVs = all_trVs[tr]
-        end
-        
-
-
-        ### TODO: This needs to be abstracted away to the specific model
-        XX = @view sol[tr][1:div(end,2),:]
-        YY = @view sol[tr][div(end,2)+1:end,:]
-        
-        #Omega = [sum(abs.(XX.^2 .- YY.^2),dims=1) ; sum(abs.(2 .* XX .* YY),dims=1)]
-        Omega = [maximum(abs.(XX),dims=1) ; maximum(abs.(YY),dims=1)]
-        #Omega = [mean(abs.(XX),dims=1) ; mean(abs.(YY),dims=1)]
-    
-
-        trLOs_Omega = zeros(T,NObs,length(Ys))
-        trLOs_Y = zeros(T,NObs,length(Ys))
-        err_trLOs_Omega = zeros(T,NObs,length(Ys))
-        err_trLOs_Y = zeros(T,NObs,length(Ys))
-        @time Threads.@threads for i in eachindex(Ys)
-            Hinx_Omega = @. (Omega[2,:] <= Ys[i]) & (Omega[1,:] <= Ys[i])
-            Hinx_Y = @. (Omega[2,:] .<= Ys[i]) 
-            
-            H_Omega = @view trVs[:,Hinx_Omega]
-            H_Y = @view trVs[:,Hinx_Y]
-            
-            trLOs_Omega[:,i] = sum(H_Omega,dims=2)/N
-            trLOs_Y[:,i] = sum(H_Y,dims=2)/N
-
-            err_trLOs_Omega[:,i] = sqrt.(sum(H_Omega.^2,dims=2)/N .- trLOs_Omega[:,i].^2) ./ sqrt(N/nn)
-            err_trLOs_Y[:,i] = sqrt.(sum(H_Y.^2,dims=2)/N .- trLOs_Y[:,i].^2) ./ sqrt(N/nn)
-        end
-        LOs_Omega[:,:,tr] .= trLOs_Omega
-        LOs_Y[:,:,tr] .= trLOs_Y
-        LOs_err_Omega[:,:,tr] .= err_trLOs_Omega
-        LOs_err_Y[:,:,tr] .= err_trLOs_Y
-
-        append!(_all_trVs,[trVs])
+    N = size(sol)[2]
+    NObs = 4*BT.model.contour.t_steps
+    trVs = zeros(NObs,N)
+    @time Threads.@threads for i in 1:N
+        @inbounds tri = @view sol[:,i]
+        @inbounds trVs[:,i] = BT.L_CO(tri)
     end
-    
-    if NTr == 1
-        DD_Y = NTr * sum( 1 ./ LOs_err_Y.^2, dims=3)
-        BT_Y = mean(LOs_Y,dims=3)  .± sqrt.( 1 ./ DD_Y )
-
-        DD_Omega = NTr * sum( 1 ./ LOs_err_Omega.^2, dims=3)
-        BT_Omega = mean(LOs_Omega,dims=3)  .± sqrt.( 1 ./ DD_Omega )
-    else
-        BT_Omega = mean(LOs_Omega,dims=3) .± std(LOs_Omega,dims=3) ./ sqrt(NTr)
-        BT_Y = mean(LOs_Y,dims=3) .± std(LOs_Y,dims=3) ./ sqrt(NTr)
-    end
-    return BT_Omega, BT_Y, _all_trVs
+    return trVs
 end
 
 
+function calcBoundaryTerms(sol,BT::BoundaryTerms{MType,YT,L,L2}; trVs=nothing) where {MType <: Model,YT,L,L2}
+    
+    @unpack Ys = BT
+    NYs = length(Ys)
+
+    NObs = 6*BT.model.contour.t_steps
+    
+    if sol isa SciMLBase.EnsembleSolution
+        solX = reshape(Array(sol),size(sol)[1], size(sol)[2]*size(sol)[3])
+    else
+        solX = Array(sol)
+    end
+    
+    N = size(solX)[2]
+    
+    if isnothing(trVs)
+        trVs = calc_Ls(solX,BT)
+    end
+
+    XX = @view solX[1:div(end,2),:]
+    YY = @view solX[div(end,2)+1:end,:]
+        
+    Omega = [maximum(abs.(XX),dims=1) ; maximum(abs.(YY),dims=1)]
+    
+
+    n_bins = 20
+    n_pr_bin = div(N,n_bins) 
+    LOs_Omega = zeros(NObs,NYs,n_bins)
+    LOs_Y = zeros(NObs,NYs,n_bins)
+    for b in 1:n_bins
+        inx = n_pr_bin*(b-1) .+ (1:n_pr_bin)
+        _Omega = @view Omega[:,inx]
+        _trVs = @view trVs[:,inx]
+        @time Threads.@threads for i in eachindex(Ys)
+            Hinx_Omega = @. (_Omega[2,:] <= Ys[i]) & (_Omega[1,:] <= Ys[i])
+            Hinx_Y = @. (_Omega[2,:] .<= Ys[i]) 
+            
+            H_Omega = @view _trVs[:,Hinx_Omega]
+            H_Y = @view _trVs[:,Hinx_Y]
+            if length(H_Omega) == 0
+                LOs_Omega[:,i,b] .= 0.0
+                LOs_Y[:,i,b] .= 0.0
+            else
+                LOs_Omega[:,i,b] .= sum(H_Omega,dims=2) / n_pr_bin
+                LOs_Y[:,i,b] .= sum(H_Y,dims=2) / n_pr_bin
+            end
+        end
+    end
+
+
+    BT_Y = mean(LOs_Y,dims=3)  .± std(LOs_Y,dims=3) ./ sqrt(n_bins)
+    BT_Omega = mean(LOs_Omega,dims=3)  .± std(LOs_Omega,dims=3) ./ sqrt(n_bins)
+
+    return BT_Omega, BT_Y, trVs
+end

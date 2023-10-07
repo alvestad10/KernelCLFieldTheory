@@ -213,7 +213,7 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{0}}; H = KP.kernel.H)
     #rex = sum([maximum(real(_x).^2) for _x in XX])
 
     imx = sum([sum(imag(_x).^2) for _x in XX])
-    rex = sum([sum(real(_x).^2) for _x in XX])
+    #rex = sum([sum(real(_x).^2) for _x in XX])
 
 
     #return xRe + xIm + 5*x2Re + x2Im + imx + rex

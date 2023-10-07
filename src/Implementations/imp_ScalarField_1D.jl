@@ -41,7 +41,7 @@ function get_ab(model::ScalarField{1},kernel::T) where {T <: ConstantKernel}
     V_pre_fac_Re = real(V_pre_fac) #hcat([real(V_pre_fac) for i in 1:n_steps]...)
     V_pre_fac_Im = imag(V_pre_fac) #hcat([imag(V_pre_fac) for i in 1:n_steps]...)
 
-    pre_fac = (1. / abs(a[1]))
+    pre_fac = (1. / (as*abs(a[1])))
     #im_pre_fac = im*pre_fac
 
     isIdentity = all(diag(H) .- 1. .== 0.0)
@@ -199,7 +199,7 @@ end
 #     V_pre_fac_Re = cu(Float32.(real(V_pre_fac))) #hcat([real(V_pre_fac) for i in 1:n_steps]...)
 #     V_pre_fac_Im = cu(Float32.(imag(V_pre_fac))) #hcat([imag(V_pre_fac) for i in 1:n_steps]...)
 
-#     pre_fac = Float32(1. / abs(a[1]))
+#     pre_fac = Float32(1. / (abs(a[1])*as))
 #     #im_pre_fac = im*pre_fac
 
 #     isIdentity = all(diag(H) .- 1. .== 0.0)
@@ -369,7 +369,7 @@ end
 #     V_pre_fac_Re = cu(real(V_pre_fac)) #hcat([real(V_pre_fac) for i in 1:n_steps]...)
 #     V_pre_fac_Im = cu(imag(V_pre_fac)) #hcat([imag(V_pre_fac) for i in 1:n_steps]...)
 
-#     pre_fac = (1. / abs(a[1]))
+#     pre_fac = (1. / (abs(a[1])*as))
 #     #im_pre_fac = im*pre_fac
 
 #     isIdentity = all(diag(H) .- 1. .== 0.0)
