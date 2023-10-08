@@ -171,6 +171,39 @@ function calc_obs(KP::KernelProblem{ScalarField{D}},sol;onlyCorr=false, max_inx 
 end
 
 
+function convert_sol_to_array(sol)
+
+    if sol isa SciMLBase.EnsembleSolution
+        solX = reshape(Array(sol),size(sol)[1], size(sol)[2]*size(sol)[3])
+    elseif sol isa Vector
+        solX = 0
+        for (i,tr) in enumerate(sol)
+            if tr isa SciMLBase.EnsembleSolution
+                get_sol_i(i) = reshape(Array(sol[i]),size(sol[i])[1], size(sol[i])[2]*size(sol[i])[3])
+                if i == 1
+                    solX = get_sol_i(1)
+                else
+                    solX = hcat(solX,get_sol_i(i))
+                end
+            elseif tr isa SciMLBase.RODESolution
+                if i == 1
+                    solX = Array(sol[1])
+                else
+                    solX = hcat(solX,Array(sol[i]))
+                end
+            else
+                print("Entry nr. ", i , " in the array is not a SciMLBase.RODESolution or SciMLBase.EnsembleSolution")
+            end
+        end
+    else
+        solX = Array(sol)
+    end
+
+
+    return solX
+
+end
+
 
 """
     Calculate the observables for each of the trajectories
@@ -179,25 +212,8 @@ function calc_mean_obs(KP::KernelProblem{ScalarField{D}},sol; onlyCorr=false) wh
     t_steps = KP.model.contour.t_steps
     n_steps = KP.model.n_steps
 
-    #T = eltype(sol[1]) #eltype( getKernelParams(KP.kernel) )
-
-    if sol isa SciMLBase.EnsembleSolution
-        solX = reshape(Array(sol),size(sol)[1], size(sol)[2]*size(sol)[3])
+    solX = convert_sol_to_array(sol)
     
-    elseif sol[1] isa SciMLBase.EnsembleSolution
-        get_sol_i(i) = reshape(Array(sol[i]),size(sol[i])[1], size(sol[i])[2]*size(sol[i])[3])
-        solX = get_sol_i(1)
-        for i in 2:length(sol)
-            solX = hcat(solX,get_sol_i(i))
-        end
-    elseif sol[1] == SciMLBase.RODESolution
-        solX = Array(sol[1])
-        for i in 2:length(sol)
-            solX = hcat(solX,Array(sol[i]))
-        end
-    else
-        solX = Array(sol)
-    end
 
     N = size(solX)[2]
     

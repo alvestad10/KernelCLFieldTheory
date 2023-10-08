@@ -240,7 +240,7 @@ function getBoundaryTermsObservables(KP::KernelProblem{ScalarField{1}};kwargs...
         Lcx2[1:div(end,2)]     .= pre_fac*2*diagKRe .+ 2*(SjKTRe .* m_uRe .- SjKTIm .* m_uIm) ./ n_steps
         Lcx2[div(end,2)+1:end] .= pre_fac*2*diagKIm .+ 2*(SjKTRe .* m_uIm .+ SjKTIm .* m_uRe) ./ n_steps
         
-        return [Lcx...,Lcx2...,Lcx0xt...]
+        return [Lcx...,Lcx2...]#,Lcx0xt...]
     end
     
     return LcO, nothing #L2cO
@@ -282,13 +282,15 @@ function calcBoundaryTerms(sol,BT::BoundaryTerms{MType,YT,L,L2}; trVs=nothing) w
     @unpack Ys = BT
     NYs = length(Ys)
 
-    NObs = 6*BT.model.contour.t_steps
+    NObs = 4*BT.model.contour.t_steps
     
-    if sol isa SciMLBase.EnsembleSolution
-        solX = reshape(Array(sol),size(sol)[1], size(sol)[2]*size(sol)[3])
-    else
-        solX = Array(sol)
-    end
+    # if sol isa SciMLBase.EnsembleSolution
+    #     solX = reshape(Array(sol),size(sol)[1], size(sol)[2]*size(sol)[3])
+    # else
+    #     solX = Array(sol)
+    # end
+
+    solX = convert_sol_to_array(sol)
     
     N = size(solX)[2]
     
