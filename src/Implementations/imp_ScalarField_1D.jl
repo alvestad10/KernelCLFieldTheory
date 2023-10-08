@@ -3,7 +3,7 @@
 """
     Get the drift and noise term to be used in the simulation
 """
-function get_ab(model::ScalarField{1},kernel::T) where {T <: ConstantKernel}
+function get_ab(model::ScalarField{1},kernel::T; κ = 0.0) where {T <: ConstantKernel}
     
     @unpack m, λ, contour, n_steps, as = model
     @unpack a, t_steps = contour
@@ -19,6 +19,7 @@ function get_ab(model::ScalarField{1},kernel::T) where {T <: ConstantKernel}
         KIm = CuArray(KIm)
     end
     
+    κ = im*κ
 
     gm1=vcat([t_steps],1:t_steps-1)
     gp1=vcat(2:t_steps,[1])
@@ -30,10 +31,10 @@ function get_ab(model::ScalarField{1},kernel::T) where {T <: ConstantKernel}
     as_prefac_re = 1 / (as^2)
     as_prefac_im = 1/ (as^2) 
 
-    one_over_a = a.^(-1)
+    one_over_a = (a .- κ).^(-1)
     one_over_a_Re = real(one_over_a) #hcat([real(one_over_a) for i in 1:n_steps]...)
     one_over_a_Im = imag(one_over_a) #hcat([imag(one_over_a) for i in 1:n_steps]...)
-    one_over_a_m1 = a_m1.^(-1)
+    one_over_a_m1 = (a_m1 .- κ).^(-1)
     one_over_a_m1_Re = real(one_over_a_m1) #hcat([real(one_over_a_m1) for i in 1:n_steps]...)
     one_over_a_m1_Im = imag(one_over_a_m1) #hcat([imag(one_over_a_m1) for i in 1:n_steps]...)
     
@@ -483,6 +484,7 @@ end
 """
 function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{1}}; H = KP.kernel.H)
 
+    @unpack κ = KP
     @unpack m, λ, contour, n_steps, as = KP.model
     @unpack a, t_steps = contour
     
@@ -494,7 +496,7 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{1}}; H = KP.kernel.H)
     gsp1=vcat(2:n_steps,[1])
 
     dt = 1e-5
-    κ = im*1e-4
+    κ = im*κ#max(κ,1e-4)
     
     a_m1 = a[gtm1]
     as_prefac = 1 / (as^2) 

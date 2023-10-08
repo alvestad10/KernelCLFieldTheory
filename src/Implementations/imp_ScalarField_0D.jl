@@ -157,7 +157,7 @@ function calcIMXLoss(sol_tr,KP::KernelProblem{ScalarField{0}}; H = KP.kernel.H)
     gtp1=vcat(2:t_steps,[1])
 
     dt = 1e-5
-    κ = im*1e-2
+    κ = im*1e-4
     
     a_m1 = a[gtm1]
 
