@@ -88,6 +88,9 @@ function learnKernel(LK::LearnKernel; reset_u0s = false, val_seed=100, u0s=nothi
                 bestKernel = deepcopy(KP.kernel)
             end
         end
+        
+        KP = updateProblem(KP; κ=KP.κ*0.5)
+        println("New kappa:", KP.κ)
     end
 
     if validation

@@ -9,7 +9,7 @@ export getScroSol
 # SETTINGS
 ######
 const NSCRO = 128
-const T = Float64 #BigFloat
+const TSCRO = BigFloat
 const DIR = "./ScroSols"
 
 function setupScroSol()
@@ -62,7 +62,7 @@ end
 
 function fill_Hamiltonian(M::ScalarField{0},dim)
     # Allocating the Hamiltonian matrix
-    H = zeros(Float64,dim,dim);
+    H = zeros(TSCRO,dim,dim);
     #H = spzeros(dim,dim)
 
     # Builder the HAmiltonian matrix
@@ -197,7 +197,7 @@ function getSolutions(model::ScalarField{0})
     scroNumber = checkIfAlreadyCalculated(model)
 
     if scroNumber == 0
-        prob = ScrodingerProblem(model,NSCRO,T)
+        prob = ScrodingerProblem(model,NSCRO,TSCRO)
 
         corr0t = zeros(Complex{Float64},length(contour.a))
         @Threads.threads for (i,t) in collect(enumerate(contour.x0[1:end-1]))
